@@ -1,0 +1,18 @@
+:root { font-family: Georgia, serif; color: #1d1427; background: #f8f5fb; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 340px; }
+main { padding: 22px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.brand img { width: 48px; height: 48px; border-radius: 15px; }
+.brand strong { display: block; font-size: 24px; }
+.brand span { color: #6f6677; font-size: 12px; }
+label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; }
+select, button { width: 100%; border-radius: 14px; font: inherit; font-weight: 700; }
+select { padding: 13px; border: 2px solid #e5ddeb; background: white; }
+button { cursor: pointer; margin-top: 12px; padding: 13px; border: 0; }
+button:disabled { cursor: wait; opacity: .6; }
+.primary { color: #1d1427; background: #9eff1f; box-shadow: 0 4px 0 #4e8f00; }
+.secondary { color: white; background: #801fff; box-shadow: 0 4px 0 #4a079d; }
+.status { min-height: 36px; margin: 20px 0 0; padding: 12px; border-radius: 12px; color: #5a4e64; background: white; font-size: 13px; }
+.privacy { color: #7d7385; text-align: center; font-size: 11px; }
+

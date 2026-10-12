@@ -1,0 +1,26 @@
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { DatabaseModule } from "./infrastructure/database/database.module";
+import { RedisModule } from "./infrastructure/redis/redis.module";
+import { HealthModule } from "./modules/health/health.module";
+import { AuthModule } from "./modules/auth/auth.module";
+import { LocalizationModule } from "./modules/localization/localization.module";
+import { SpeechModule } from "./modules/speech/speech.module";
+import { BillingModule } from "./modules/billing/billing.module";
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ["../../.env.local", "../../.env", ".env.local", ".env"],
+    }),
+    DatabaseModule,
+    RedisModule,
+    HealthModule,
+    AuthModule,
+    LocalizationModule,
+    SpeechModule,
+    BillingModule,
+  ],
+})
+export class AppModule {}

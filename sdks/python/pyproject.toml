@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tcharize"
+version = "0.1.0"
+description = "Official Python SDK for the Tcharize localization API"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "Tcharize" }]
+
+[project.urls]
+Documentation = "https://tcharize.com/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tcharize"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

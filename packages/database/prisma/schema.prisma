@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+  REVIEWER
+}
+
+enum TranslationStatus {
+  QUEUED
+  RUNNING
+  NEEDS_REVIEW
+  COMPLETED
+  FAILED
+}
+
+enum OtpPurpose {
+  SIGNUP
+  PASSWORD_RESET
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  displayName  String?
+  passwordHash String?
+  emailVerifiedAt DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+  otpCodes     OtpCode[]
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String
+  codeHash  String
+  purpose   OtpPurpose @default(PASSWORD_RESET)
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, expiresAt])
+}
+
+model Organization {
+  id           String               @id @default(cuid())
+  name         String
+  slug         String               @unique
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  memberships  Membership[]
+  projects     Project[]
+  apiKeys      ApiKey[]
+  subscription Subscription?
+  transactions PaymentTransaction[]
+}
+
+model Membership {
+  userId         String
+  organizationId String
+  role           OrganizationRole @default(MEMBER)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, organizationId])
+}
+
+model Project {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  sourceLanguage String           @default("en")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  glossaries     GlossaryEntry[]
+  jobs           TranslationJob[]
+
+  @@unique([organizationId, slug])
+}
+
+model GlossaryEntry {
+  id             String   @id @default(cuid())
+  projectId      String
+  sourceLanguage String
+  targetLanguage String
+  sourceTerm     String
+  targetTerm     String
+  notes          String?
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, sourceLanguage, targetLanguage, sourceTerm])
+}
+
+model TranslationJob {
+  id             String            @id @default(cuid())
+  projectId      String?
+  sourceLanguage String
+  targetLanguage String
+  sourceText     String
+  translatedText String?
+  explanation    String?
+  provider       String?
+  model          String?
+  status         TranslationStatus @default(QUEUED)
+  qualityScore   Float?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  project        Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  keyHash        String       @unique
+  prefix         String       // e.g. tch_live_79a2...
+  name           String
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+enum PlanTier {
+  FREE
+  BUILDER
+  TEAM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  organizationId       String             @unique
+  plan                 PlanTier           @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  paystackCustomerCode String?
+  paystackSubCode      String?
+  wordLimit            Int                @default(10000)
+  wordsUsed            Int                @default(0)
+  currentPeriodStart   DateTime           @default(now())
+  currentPeriodEnd     DateTime
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model PaymentTransaction {
+  id             String            @id @default(cuid())
+  organizationId String
+  reference      String            @unique
+  amountKobo     Int
+  currency       String            @default("NGN")
+  status         TransactionStatus @default(PENDING)
+  channel        String?
+  paidAt         DateTime?
+  metadata       String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, reference])
+}
+
