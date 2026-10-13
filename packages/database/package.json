@@ -16,7 +16,7 @@
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc && node -e \"require('fs').renameSync('dist/index.js','dist/index.cjs')\"",
     "generate": "prisma generate",
     "migrate": "node --env-file-if-exists=../../.env.local ../../node_modules/prisma/build/index.js migrate dev --schema prisma/schema.prisma",
-    "migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "migrate:deploy": "node scripts/deploy-migrations.mjs",
     "studio": "node --env-file-if-exists=../../.env.local ../../node_modules/prisma/build/index.js studio --schema prisma/schema.prisma",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
