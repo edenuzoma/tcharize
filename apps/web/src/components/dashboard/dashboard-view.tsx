@@ -846,7 +846,7 @@ export function DashboardView() {
                   cURL Example
                 </span>
                 <pre className="mt-2 overflow-x-auto text-xs font-mono text-white/80">
-{`curl -X POST http://localhost:4000/api/v1/localization/translate \\
+{`curl -X POST ${apiUrl}/localization/translate \\
   -H "Authorization: Bearer tch_live_YOUR_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"text": "Welcome to our platform", "sourceLanguage": "en", "targetLanguage": "yo"}'`}
