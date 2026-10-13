@@ -9,7 +9,7 @@ from .models import Language, Translation
 class Tcharize:
     """Typed client for the Tcharize API."""
 
-    def __init__(self, api_key: str, *, base_url: str = "https://api.tcharize.com/api/v1", timeout: float = 60.0):
+    def __init__(self, api_key: str, *, base_url: str = "https://tcharizeapi-production.up.railway.app/api/v1", timeout: float = 60.0):
         if not api_key:
             raise ValueError("api_key is required")
         self.api_key, self.base_url, self.timeout = api_key, base_url.rstrip("/"), timeout
