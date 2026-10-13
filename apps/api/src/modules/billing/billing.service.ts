@@ -130,9 +130,12 @@ export class BillingService {
     });
 
     if (!this.paystackSecretKey) {
-      this.logger.warn("PAYSTACK_SECRET_KEY not set. Generating mock authorization URL for testing.");
+      if (process.env.NODE_ENV === "production") {
+        throw new BadRequestException("Payments are not ready yet. Please try again later.");
+      }
+      this.logger.warn("PAYSTACK_SECRET_KEY is not set. Using the local-only payment flow.");
       return {
-        authorization_url: `http://localhost:3000/dashboard?payment_success=true&reference=${reference}`,
+        authorization_url: `${process.env.WEB_URL || "http://localhost:3000"}/dashboard?payment_success=true&reference=${reference}`,
         access_code: `mock_${reference}`,
         reference,
       };
@@ -150,7 +153,7 @@ export class BillingService {
           amount: planConfig.priceKobo, // integer kobo
           currency: "NGN",
           reference,
-          callback_url: input.callbackUrl || "http://localhost:3000/dashboard",
+          callback_url: input.callbackUrl || `${process.env.WEB_URL || "http://localhost:3000"}/dashboard`,
           metadata: {
             organizationId: org.id,
             plan: input.plan,
@@ -192,7 +195,10 @@ export class BillingService {
     }
 
     if (!this.paystackSecretKey) {
-      // Mock verification for local testing
+      if (process.env.NODE_ENV === "production") {
+        throw new BadRequestException("Payments are not ready yet. Please try again later.");
+      }
+      // Local-only verification for development.
       return this.applySuccessfulTransaction(tx, "mock");
     }
 

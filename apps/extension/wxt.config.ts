@@ -6,7 +6,10 @@ export default defineConfig({
     name: "Tcharize",
     description: "Read the web in Nigerian languages.",
     permissions: ["activeTab", "storage"],
-    host_permissions: ["http://localhost:4000/*"],
+    host_permissions: [
+      "http://localhost:4000/*",
+      "https://tcharize-api.up.railway.app/*",
+    ],
     action: { default_title: "Tcharize this page" },
     icons: { 128: "icon.png" },
   },
