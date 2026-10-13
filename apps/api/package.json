@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
-    "start": "node dist/main.js",
+    "build": "pnpm --filter @tcharize/contracts build && pnpm --filter @tcharize/database generate && pnpm --filter @tcharize/database build && nest build",
+    "start": "pnpm --filter @tcharize/database migrate:deploy && node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
