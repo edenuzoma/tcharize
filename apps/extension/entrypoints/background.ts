@@ -6,7 +6,10 @@ import type {
   TranslateResponse,
 } from "@tcharize/contracts";
 
-const apiUrl = import.meta.env.WXT_API_URL || "http://localhost:4000/api/v1";
+const apiUrl = import.meta.env.WXT_API_URL
+  || (import.meta.env.DEV
+    ? "http://localhost:4000/api/v1"
+    : "https://tcharizeapi-production.up.railway.app/api/v1");
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: unknown) => {
