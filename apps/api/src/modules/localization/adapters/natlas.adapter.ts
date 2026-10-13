@@ -158,27 +158,15 @@ export class NatlasAdapter {
         return result.translations.map((item) => item.trim().replace(/^["'“”]+|["'“”]+$/gu, "").trim());
       }
 
-      const model = this.config.get<string>("NATLAS_MODEL_ID") || process.env.NATLAS_MODEL_ID || "NCAIR1/N-ATLaS";
-      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/chat/completions`, {
+      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/translations/natlas`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-        body: JSON.stringify({
-          model,
-          temperature: 0,
-          max_tokens: 2048,
-          messages: [
-            { role: "system", content: "Translate website interface copy. Return only one valid JSON array of translated strings. Keep the same order and item count. Keep product names, URLs, code, numbers, and placeholders unchanged." },
-            { role: "user", content: `Translate this JSON array from English to ${languageNames[targetLanguage]}:\n${JSON.stringify(texts)}` },
-          ],
-        }),
+        body: JSON.stringify({ texts, source_language: "en", target_language: targetLanguage }),
         signal: AbortSignal.timeout(180_000),
       });
       if (!response.ok) throw new Error(`N-ATLaS returned ${response.status}`);
-      const result = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      const content = result.choices?.[0]?.message?.content ?? "";
-      const match = content.match(/\[[\s\S]*\]/);
-      if (!match) throw new Error("N-ATLaS did not return a translation list.");
-      const translated = JSON.parse(match[0]) as unknown;
+      const result = await response.json() as { translations?: unknown };
+      const translated = result.translations;
       if (!Array.isArray(translated) || translated.length !== texts.length || !translated.every((item) => typeof item === "string")) {
         throw new Error("N-ATLaS returned an incomplete translation list.");
       }

@@ -104,6 +104,11 @@ def api():
         source_language: str
         target_language: str
 
+    class NatlasTranslationRequest(BaseModel):
+        texts: list[str] = Field(min_length=1, max_length=50)
+        source_language: str = "en"
+        target_language: str
+
     def authorize(authorization: str | None):
         expected = os.getenv("NATLAS_API_KEY")
         if expected and authorization != f"Bearer {expected}":
@@ -150,6 +155,44 @@ def api():
         buffer = io.BytesIO()
         write_wav(buffer, speech_model.config.sampling_rate, (waveform * 32767).astype(np.int16))
         return Response(buffer.getvalue(), media_type="audio/wav", headers={"X-Tcharize-Model": speech_model_id})
+
+    @web.post("/v1/translations/natlas")
+    def translate_natlas(body: NatlasTranslationRequest, authorization: str | None = Header(default=None)):
+        authorize(authorization)
+        source_name = LANGUAGE_NAMES.get(body.source_language.lower())
+        target_name = LANGUAGE_NAMES.get(body.target_language.lower())
+        if not source_name or not target_name or body.target_language.lower() == "pcm":
+            raise HTTPException(status_code=400, detail="Choose a supported N-ATLaS language pair.")
+        messages = [
+            [
+                {
+                    "role": "system",
+                    "content": "Translate website interface text accurately. Return only the translated text. Keep product names, URLs, code, numbers, and placeholders unchanged.",
+                },
+                {
+                    "role": "user",
+                    "content": f"Translate from {source_name} to {target_name}:\n\n{text}",
+                },
+            ]
+            for text in body.texts
+        ]
+        prompts = [tokenizer.apply_chat_template(item, tokenize=False, add_generation_prompt=True) for item in messages]
+        if tokenizer.pad_token_id is None:
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+        inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=1024).to(translator.device)
+        with torch.inference_mode():
+            output = translator.generate(
+                **inputs,
+                max_new_tokens=96,
+                do_sample=False,
+                pad_token_id=tokenizer.pad_token_id,
+            )
+        prompt_length = inputs.input_ids.shape[1]
+        translations = [
+            tokenizer.decode(item[prompt_length:], skip_special_tokens=True).strip().strip("\"'“”")
+            for item in output
+        ]
+        return {"translations": translations, "model": model_id, "provider": "n-atlas"}
 
     @web.post("/v1/translations/pidgin")
     def translate_pidgin(body: PidginRequest, authorization: str | None = Header(default=None)):

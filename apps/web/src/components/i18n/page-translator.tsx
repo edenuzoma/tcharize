@@ -76,12 +76,13 @@ export function PageTranslator() {
                   const replacement = chunkLookup.get(original);
                   if (replacement) textNode.nodeValue = originalValue.replace(original, replacement);
                 }
-              } catch {
+              } catch (error) {
+                if (process.env.NODE_ENV === "development") console.warn("Page translation chunk failed", error);
                 // Keep translating the other chunks when one provider request fails.
               }
             }
           };
-          await Promise.all(Array.from({ length: Math.min(3, chunks.length) }, worker));
+          await worker();
           if (results.every(Boolean)) {
             translated = results.flat();
             sessionStorage.setItem(cacheKey, JSON.stringify(translated));
@@ -95,7 +96,8 @@ export function PageTranslator() {
           const replacement = lookup.get(original);
           if (replacement) textNode.nodeValue = (textNode.nodeValue ?? "").replace(original, replacement);
         }
-      } catch {
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") console.warn("Page translation failed", error);
         // Existing hand-written translations stay visible if live page translation is unavailable.
       }
     }
