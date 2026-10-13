@@ -6,19 +6,23 @@ import type {
   TranslateResponse,
 } from "@tcharize/contracts";
 
-const apiUrl = "http://localhost:4000/api/v1";
+const apiUrl = import.meta.env.WXT_API_URL || "http://localhost:4000/api/v1";
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: unknown) => {
     if (isBatchMessage(message)) {
-      return fetch(`${apiUrl}/localization/batch`, {
+      return fetch(`${apiUrl}/localization/page`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(message.payload),
+        body: JSON.stringify({ texts: message.payload.texts, targetLanguage: message.payload.targetLanguage }),
       }).then(async (response) => {
-        const body = (await response.json()) as BatchTranslateResponse & { message?: string };
+        const body = (await response.json()) as { translations?: string[]; message?: string };
         if (!response.ok) throw new Error(body.message ?? "Batch translation failed.");
-        return body;
+        return {
+          translations: (body.translations ?? []).map((translation) => ({ translation, provider: "tcharize-page", model: "routed" })),
+          totalChanged: body.translations?.length ?? 0,
+          targetLanguage: message.payload.targetLanguage,
+        } satisfies BatchTranslateResponse;
       });
     }
 

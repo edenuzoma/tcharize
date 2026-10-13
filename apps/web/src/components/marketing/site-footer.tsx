@@ -3,36 +3,16 @@
 import Link from "next/link";
 import { Linkedin } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { useLanguage } from "@/components/i18n/language-context";
+import type { LanguageCode } from "@tcharize/contracts";
 
-const groups = [
-  {
-    title: "Product",
-    links: [
-      ["Playground", "/playground"],
-      ["Browser extension", "/#extension"],
-      ["Pricing", "/pricing"],
-      ["Languages", "/#languages"],
-    ],
-  },
-  {
-    title: "Build",
-    links: [
-      ["Documentation", "/docs"],
-      ["API reference", "/docs#api"],
-      ["Dashboard", "/dashboard"],
-      ["Create account", "/signup"],
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      ["Blog", "/blog"],
-      ["Careers", "/careers"],
-      ["Contact", "/contact"],
-      ["Privacy", "/privacy"],
-    ],
-  },
-] as const;
+const footerLabels: Record<LanguageCode, { build: string; docs: string; api: string; blog: string; careers: string; contact: string }> = {
+  en: { build: "Build", docs: "Documentation", api: "API reference", blog: "Blog", careers: "Careers", contact: "Contact" },
+  ha: { build: "Gina", docs: "Takardu", api: "Bayanin API", blog: "Labarai", careers: "Ayyuka", contact: "Tuntube mu" },
+  ig: { build: "Wuo", docs: "Akwụkwọ ntụziaka", api: "Ntuziaka API", blog: "Blọọgụ", careers: "Ọrụ", contact: "Kpọtụrụ anyị" },
+  yo: { build: "Kọ́", docs: "Ìwé ìtọ́sọ́nà", api: "Ìtọ́kasí API", blog: "Bulọọgi", careers: "Iṣẹ́", contact: "Kàn sí wa" },
+  pcm: { build: "Build", docs: "Guide", api: "API guide", blog: "Blog", careers: "Jobs", contact: "Contact us" },
+};
 
 function XIcon() {
   return (
@@ -47,6 +27,13 @@ function XIcon() {
 }
 
 export function SiteFooter() {
+  const { language, t } = useLanguage();
+  const labels = footerLabels[language];
+  const groups = [
+    { title: t("navProduct"), links: [[t("prodEngineLink"), "/playground"], [t("prodExtLabel"), "/#extension"], [t("navPricing"), "/pricing"], [t("navLanguages"), "/#languages"]] },
+    { title: labels.build, links: [[labels.docs, "/docs"], [labels.api, "/docs#api"], [t("navDashboard"), "/dashboard"], [t("navCreateAccount"), "/signup"]] },
+    { title: t("navCompany"), links: [[labels.blog, "/blog"], [labels.careers, "/careers"], [labels.contact, "/contact"], [t("footerPrivacy"), "/privacy"]] },
+  ] as const;
   return (
     <footer id="company" className="px-4 pb-5 sm:px-6">
       <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-ink/10 bg-mist">
@@ -55,9 +42,7 @@ export function SiteFooter() {
             <div>
               <BrandLogo />
               <p className="mt-5 max-w-sm leading-7 text-ink/60">
-                Nigeria&apos;s localization engineering and translation frontier
-                AI. Built so every person can use the internet in words that
-                feel like home.
+                {t("footerMission")}
               </p>
               <div className="mt-6 flex gap-3">
                 <a
@@ -80,7 +65,7 @@ export function SiteFooter() {
                 </a>
               </div>
               <p className="mt-6 text-sm font-bold text-secondary">
-                Built in Nigeria. Ready for Africa.
+                {t("heroBadge")}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
@@ -102,8 +87,8 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="flex flex-col items-center justify-between gap-3 px-7 py-5 text-center text-xs text-ink/50 sm:flex-row sm:text-left">
-          <span>© 2026 Tcharize. All rights reserved.</span>
-          <span>N-ATLaS attribution: FMCIDE · Awarri Technologies</span>
+          <span>© 2026 Tcharize. {t("footerRights")}</span>
+          <span>{t("footerAttribution")}</span>
         </div>
       </div>
     </footer>

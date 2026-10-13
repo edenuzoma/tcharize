@@ -215,12 +215,30 @@ export class AuthService {
   }
 
   private async sendBrevoEmail(to: string, code: string, purpose: OtpPurpose) {
+    const apiKey = process.env.BREVO_API_KEY;
     const host = process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com";
     const port = Number(process.env.BREVO_SMTP_PORT || 587);
     const user = process.env.BREVO_SMTP_USER;
     const password = process.env.BREVO_SMTP_KEY;
     const senderEmail = process.env.BREVO_SENDER_EMAIL;
-    if (!user || !password || !senderEmail) { this.logger.error("Brevo SMTP is not configured."); return false; }
+    if (!senderEmail || (!apiKey && (!user || !password))) { this.logger.error("Brevo email is not configured."); return false; }
+    const subject = purpose === "SIGNUP" ? "Verify your Tcharize account" : "Reset your Tcharize password";
+    const htmlContent = `<div style="font-family:system-ui;max-width:500px;margin:auto;padding:24px"><h1 style="color:#801fff">Tcharize</h1><p>${purpose === "SIGNUP" ? "Use this code to finish signing up." : "Use this code to reset your password."}</p><p style="background:#9eff1f;color:#1d1427;font-size:30px;font-weight:700;letter-spacing:6px;padding:16px;text-align:center;border-radius:14px">${code}</p><p>This code ends in 10 minutes. Do not share it.</p></div>`;
+    if (apiKey) {
+      try {
+        const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" },
+          body: JSON.stringify({ sender: { name: "Tcharize", email: senderEmail }, to: [{ email: to }], subject, htmlContent }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (response.ok) return true;
+        this.logger.error(`Brevo API email failed with status ${response.status}.`);
+      } catch (error) {
+        this.logger.error(`Brevo API email failed: ${error instanceof Error ? error.message : "unknown error"}`);
+      }
+    }
+    if (!user || !password) return false;
     try {
       const transport = nodemailer.createTransport({
         host,
@@ -234,8 +252,8 @@ export class AuthService {
       await transport.sendMail({
         from: { name: "Tcharize", address: senderEmail },
         to,
-        subject: purpose === "SIGNUP" ? "Verify your Tcharize account" : "Reset your Tcharize password",
-        html: `<div style="font-family:system-ui;max-width:500px;margin:auto;padding:24px"><h1 style="color:#801fff">Tcharize</h1><p>${purpose === "SIGNUP" ? "Use this code to finish signing up." : "Use this code to reset your password."}</p><p style="background:#9eff1f;color:#1d1427;font-size:30px;font-weight:700;letter-spacing:6px;padding:16px;text-align:center;border-radius:14px">${code}</p><p>This code ends in 10 minutes. Do not share it.</p></div>`,
+        subject,
+        html: htmlContent,
       });
       return true;
     } catch (error) {
