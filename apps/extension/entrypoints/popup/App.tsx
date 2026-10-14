@@ -13,6 +13,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     void browser.storage.local.get("tcharizeApiKey").then((stored) => {
@@ -102,14 +103,19 @@ export function App() {
       </div>
 
       <label htmlFor="api-key">Your Tcharize API key</label>
-      <input
-        id="api-key"
-        type="password"
-        value={apiKey}
-        onChange={(event) => setApiKey(event.target.value)}
-        autoComplete="off"
-        placeholder="tch_live_…"
-      />
+      <div className="secret-field">
+        <input
+          id="api-key"
+          type={showApiKey ? "text" : "password"}
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          autoComplete="off"
+          placeholder="tch_live_…"
+        />
+        <button type="button" className="secret-toggle" onClick={() => setShowApiKey((value) => !value)} aria-label={showApiKey ? "Hide API key" : "Show API key"} aria-pressed={showApiKey}>
+          {showApiKey ? "◉" : "◌"}
+        </button>
+      </div>
       <button className="key-button" type="button" onClick={saveApiKey}>
         Save API key
       </button>

@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Building2, CheckCircle2, LoaderCircle, UserRound } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, Eye, EyeOff, LoaderCircle, UserRound } from "lucide-react";
 import { Button } from "@tcharize/ui";
 import { BrandLogo } from "@/components/brand-logo";
 
@@ -76,6 +76,11 @@ export function Auth05({ mode }: Auth05Props) {
   const title = mode === "login" ? "Welcome back" : mode === "signup" ? (codeSent ? "Check your email" : "Make your account") : "Reset your password";
   const intro = mode === "login" ? "Use your email and password." : mode === "signup" ? (codeSent ? `We sent a 6-digit code to ${email}.` : "Choose what you need. You can invite people later.") : "We will email you a 6-digit reset code.";
   const inputClass = "mt-1.5 h-12 w-full rounded-2xl border-2 border-ink/10 bg-mist px-4 text-base text-ink outline-none transition placeholder:text-ink/40 focus:border-secondary focus-visible:ring-4 focus-visible:ring-secondary/15";
+  const loadingLabel = mode === "login"
+    ? "Signing you in…"
+    : mode === "signup"
+      ? codeSent ? "Checking your code…" : "Creating your account…"
+      : codeSent ? "Saving your password…" : "Sending your code…";
 
   return (
     <main className="flex min-h-screen bg-background lg:grid lg:grid-cols-[minmax(0,36rem)_1fr]">
@@ -103,12 +108,13 @@ export function Auth05({ mode }: Auth05Props) {
             {mode === "signup" && !codeSent && <Field label="Your name"><input className={inputClass} value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="name" required placeholder="Your name" /></Field>}
             <Field label="Email"><input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" disabled={codeSent} required placeholder="you@company.com" /></Field>
             {mode === "signup" && !codeSent && accountType === "team" && <Field label="Team name"><input className={inputClass} value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} required placeholder="Your team" /></Field>}
-            {(mode === "login" || (mode === "signup" && !codeSent)) && <Field label="Password"><input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} required placeholder="At least 8 characters" /></Field>}
+            {(mode === "login" || (mode === "signup" && !codeSent)) && <Field label="Password"><PasswordInput className={inputClass} value={password} onChange={setPassword} autoComplete={mode === "login" ? "current-password" : "new-password"} /></Field>}
             {codeSent && <Field label="6-digit code"><input className={`${inputClass} text-center font-mono text-xl tracking-[0.35em]`} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} required placeholder="000000" /></Field>}
-            {mode === "forgot-password" && codeSent && <Field label="New password"><input className={inputClass} type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" minLength={8} required placeholder="At least 8 characters" /></Field>}
+            {mode === "forgot-password" && codeSent && <Field label="New password"><PasswordInput className={inputClass} value={newPassword} onChange={setNewPassword} autoComplete="new-password" /></Field>}
             <Button type="submit" disabled={loading} className="h-12 w-full text-[#1d1427]">
-              {loading ? <LoaderCircle className="animate-spin" size={18} /> : <>{mode === "login" ? "Sign in" : mode === "signup" ? (codeSent ? "Verify and continue" : "Sign up") : (codeSent ? "Save new password" : "Send reset code")}<ArrowRight size={17} /></>}
+              {loading ? <><LoaderCircle className="animate-spin" size={18} /><span>{loadingLabel}</span></> : <>{mode === "login" ? "Sign in" : mode === "signup" ? (codeSent ? "Verify and continue" : "Sign up") : (codeSent ? "Save new password" : "Send reset code")}<ArrowRight size={17} /></>}
             </Button>
+            {loading && mode === "signup" && !codeSent && <p role="status" className="text-center text-xs text-ink/55">We are sending your secure code. This can take a few seconds.</p>}
           </form>
 
           {mode === "login" && <p className="mt-5 text-center text-sm"><Link className="font-bold text-secondary hover:underline" href="/forgot-password">Forgot your password?</Link></p>}
@@ -128,4 +134,31 @@ export function Auth05({ mode }: Auth05Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-sm font-bold text-ink"><span>{label}</span>{children}</label>;
+}
+
+function PasswordInput({ className, value, onChange, autoComplete }: { className: string; value: string; onChange: (value: string) => void; autoComplete: "current-password" | "new-password" }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="relative block">
+      <input
+        className={`${className} pr-14`}
+        type={visible ? "text" : "password"}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={autoComplete}
+        minLength={8}
+        required
+        placeholder="At least 8 characters"
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((current) => !current)}
+        className="absolute right-1 top-[0.55rem] grid h-10 w-10 place-items-center rounded-xl text-ink/55 transition hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-secondary/20"
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+      >
+        {visible ? <EyeOff size={19} /> : <Eye size={19} />}
+      </button>
+    </span>
+  );
 }

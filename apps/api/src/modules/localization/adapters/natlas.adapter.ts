@@ -10,6 +10,39 @@ const languageNames: Record<string, string> = {
   pcm: "Nigerian Pidgin",
 };
 
+const protectedTerms = [
+  "Awarri Technologies", "NITHUB-AI", "N-ATLaS", "TypeScript", "PostgreSQL",
+  "Cloudflare", "LogoForge", "Tcharize", "Next.js", "NestJS", "Node.js",
+  "Paystack", "FMCIDE", "React", "Redis", "GitHub", "API", "Git",
+  "English", "Hausa", "Igbo", "Yorùbá", "Naijá", "Nigerian Pidgin",
+] as const;
+const unsafeTranslation = /translate\s+(?:the\s+following|from)|\buser\b\s*:|\bassistant\b\s*:|<\/?(?:system|user|assistant)>/iu;
+
+function escapePattern(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function protectText(value: string) {
+  const terms: string[] = [];
+  const pattern = new RegExp(`(${protectedTerms.map(escapePattern).join("|")})`, "gu");
+  return {
+    terms,
+    value: value.replace(pattern, (term) => {
+      const index = terms.push(term) - 1;
+      return `__TCHARIZE_TERM_${index}__`;
+    }),
+  };
+}
+
+function restoreTranslation(original: string, candidate: string, terms: string[]) {
+  if (!candidate || unsafeTranslation.test(candidate) || candidate.length > Math.max(600, original.length * 5)) return original;
+  let restored = candidate.trim().replace(/^['"“”]+|['"“”]+$/gu, "").trim();
+  terms.forEach((term, index) => {
+    restored = restored.replace(new RegExp(`__TCHARIZE_TERM_${index}__`, "giu"), term);
+  });
+  return terms.some((term) => !restored.includes(term)) ? original : restored;
+}
+
 @Injectable()
 export class NatlasAdapter {
   private readonly logger = new Logger(NatlasAdapter.name);
@@ -144,24 +177,25 @@ export class NatlasAdapter {
     }
     if (!languageNames[targetLanguage] || targetLanguage === "en") return texts;
 
+    const protectedTexts = texts.map(protectText);
     try {
       if (targetLanguage === "pcm") {
         const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/translations/pidgin`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-          body: JSON.stringify({ texts, source_language: "en", target_language: "pcm" }),
+          body: JSON.stringify({ texts: protectedTexts.map((item) => item.value), source_language: "en", target_language: "pcm" }),
           signal: AbortSignal.timeout(180_000),
         });
         if (!response.ok) throw new Error(`Pidgin provider returned ${response.status}`);
         const result = await response.json() as { translations?: string[] };
         if (!result.translations || result.translations.length !== texts.length) throw new Error("Pidgin provider returned an incomplete page.");
-        return result.translations.map((item) => item.trim().replace(/^["'“”]+|["'“”]+$/gu, "").trim());
+        return result.translations.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
       }
 
       const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/translations/natlas`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-        body: JSON.stringify({ texts, source_language: "en", target_language: targetLanguage }),
+        body: JSON.stringify({ texts: protectedTexts.map((item) => item.value), source_language: "en", target_language: targetLanguage }),
         signal: AbortSignal.timeout(180_000),
       });
       if (!response.ok) throw new Error(`N-ATLaS returned ${response.status}`);
@@ -170,7 +204,7 @@ export class NatlasAdapter {
       if (!Array.isArray(translated) || translated.length !== texts.length || !translated.every((item) => typeof item === "string")) {
         throw new Error("N-ATLaS returned an incomplete translation list.");
       }
-      return translated.map((item) => item.trim());
+      return translated.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
     } catch (error) {
       this.logger.error(`Page translation failed: ${error instanceof Error ? error.message : "unknown error"}`);
       throw new BadGatewayException("We could not translate this page. Try again.");

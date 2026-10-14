@@ -74,4 +74,31 @@ describe("NatlasAdapter", () => {
       explain: false,
     })).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
+
+  it("keeps product names unchanged in page translations", async () => {
+    const mockConfig = {
+      get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
+    } as unknown as ConfigService;
+    adapter = new NatlasAdapter(mockConfig);
+    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({
+      translations: ["Jiri __TCHARIZE_TERM_0__ rụọ ọrụ na __TCHARIZE_TERM_1__"],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await expect(adapter.translatePage(["Build with Tcharize and N-ATLaS"], "ig"))
+      .resolves.toEqual(["Jiri Tcharize rụọ ọrụ na N-ATLaS"]);
+    const request = (global.fetch as jest.Mock).mock.calls[0]?.[1] as RequestInit;
+    expect(String(request.body)).not.toContain("Build with Tcharize and N-ATLaS");
+  });
+
+  it("drops leaked model prompts instead of putting them in the page", async () => {
+    const mockConfig = {
+      get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
+    } as unknown as ConfigService;
+    adapter = new NatlasAdapter(mockConfig);
+    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({
+      translations: ["USER: Translate from English to Igbo: Welcome back"],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await expect(adapter.translatePage(["Welcome back"], "ig")).resolves.toEqual(["Welcome back"]);
+  });
 });

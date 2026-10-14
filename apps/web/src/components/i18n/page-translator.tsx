@@ -4,14 +4,48 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./language-context";
 import { translations } from "./translations";
+import { getStaticPageCopy } from "./page-copy";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 const protectedTags = new Set([
   "SCRIPT", "STYLE", "NOSCRIPT", "CODE", "PRE", "SVG",
   "INPUT", "TEXTAREA", "SELECT", "OPTION",
 ]);
-const brandCopy = /^(Tcharize|N-ATLaS|NITHUB-AI|Next\.js|React|NestJS|TypeScript|Node\.js|PostgreSQL|Redis|Cloudflare|GitHub|Paystack|LogoForge|FMCIDE|Awarri Technologies)$/u;
-const chunkSize = 150;
+const brandNames = [
+  "Awarri Technologies", "NITHUB-AI", "N-ATLaS", "TypeScript", "PostgreSQL",
+  "Cloudflare", "LogoForge", "Tcharize", "Next.js", "NestJS", "Node.js",
+  "Paystack", "FMCIDE", "React", "Redis", "GitHub", "API", "Git",
+  "English", "Hausa", "Igbo", "Yorùbá", "Naijá", "Nigerian Pidgin",
+] as const;
+const brandCopy = new RegExp(`^(?:${brandNames.map(escapePattern).join("|")})$`, "u");
+const brandInText = new RegExp(`(${brandNames.map(escapePattern).join("|")})`, "gu");
+const unsafeProviderCopy = /translate\s+(?:the\s+following|from)|\buser\b\s*:|\bassistant\b\s*:|<\/?(?:system|user|assistant)>/iu;
+const chunkSize = 40;
+
+function escapePattern(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function protectBrands(value: string) {
+  const brands: string[] = [];
+  return {
+    brands,
+    value: value.replace(brandInText, (brand) => {
+      const index = brands.push(brand) - 1;
+      return `__TCHARIZE_BRAND_${index}__`;
+    }),
+  };
+}
+
+function restoreSafeTranslation(original: string, candidate: string, brands: string[]) {
+  if (!candidate || unsafeProviderCopy.test(candidate) || candidate.length > Math.max(600, original.length * 5)) return original;
+  let restored = candidate.trim();
+  brands.forEach((brand, index) => {
+    restored = restored.replace(new RegExp(`__TCHARIZE_BRAND_${index}__`, "giu"), brand);
+  });
+  if (brands.some((brand) => !restored.includes(brand))) return original;
+  return restored;
+}
 
 function readCache(language: string, pathname: string) {
   try {
@@ -26,6 +60,7 @@ export function PageTranslator() {
   const { language } = useLanguage();
   const pathname = usePathname();
   const originals = useRef(new Map<Text, string>());
+  const attributeOriginals = useRef(new Map<Element, Map<string, string>>());
   const translatedValues = useRef(new WeakMap<Text, string>());
   const runId = useRef(0);
 
@@ -33,6 +68,7 @@ export function PageTranslator() {
     const currentRun = ++runId.current;
     const pending = new Set<Text>();
     const cache = readCache(language, pathname);
+    const staticCopy = getStaticPageCopy(language);
     const staticTranslations = new Set(Object.values(translations[language]));
     let timer: ReturnType<typeof setTimeout> | undefined;
     let flushing = false;
@@ -42,10 +78,44 @@ export function PageTranslator() {
       if (node.isConnected) node.nodeValue = original;
     }
     originals.current.clear();
+    for (const [element, attributes] of attributeOriginals.current) {
+      if (!element.isConnected) continue;
+      attributes.forEach((value, name) => element.setAttribute(name, value));
+    }
+    attributeOriginals.current.clear();
     translatedValues.current = new WeakMap<Text, string>();
     document.documentElement.lang = language;
     document.documentElement.dataset.translationState = language === "en" ? "ready" : "loading";
     if (language === "en") return;
+
+    function applyStaticText(textNode: Text) {
+      const fullOriginal = originals.current.get(textNode) ?? textNode.nodeValue ?? "";
+      const original = fullOriginal.trim();
+      const replacement = staticCopy[original];
+      if (!replacement) return false;
+      originals.current.set(textNode, fullOriginal);
+      textNode.nodeValue = fullOriginal.replace(original, replacement);
+      translatedValues.current.set(textNode, textNode.nodeValue.trim());
+      return true;
+    }
+
+    function applyStaticAttributes(root: Node) {
+      const elements = root.nodeType === Node.ELEMENT_NODE
+        ? [root as Element, ...(root as Element).querySelectorAll("[placeholder], [title], [aria-label]")]
+        : [];
+      for (const element of elements) {
+        if (element.closest("[data-no-translate]")) continue;
+        for (const name of ["placeholder", "title", "aria-label"]) {
+          const value = element.getAttribute(name);
+          const replacement = value ? staticCopy[value.trim()] : undefined;
+          if (!value || !replacement) continue;
+          const saved = attributeOriginals.current.get(element) ?? new Map<string, string>();
+          if (!saved.has(name)) saved.set(name, value);
+          attributeOriginals.current.set(element, saved);
+          element.setAttribute(name, replacement);
+        }
+      }
+    }
 
     function isEligible(textNode: Text) {
       const parent = textNode.parentElement;
@@ -57,12 +127,13 @@ export function PageTranslator() {
     }
 
     function collect(root: Node) {
-      if (root.nodeType === Node.TEXT_NODE && isEligible(root as Text)) pending.add(root as Text);
+      applyStaticAttributes(root);
+      if (root.nodeType === Node.TEXT_NODE && !applyStaticText(root as Text) && isEligible(root as Text)) pending.add(root as Text);
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       let node = walker.nextNode();
       while (node) {
         const textNode = node as Text;
-        if (isEligible(textNode)) pending.add(textNode);
+        if (!applyStaticText(textNode) && isEligible(textNode)) pending.add(textNode);
         node = walker.nextNode();
       }
       scheduleFlush();
@@ -74,17 +145,20 @@ export function PageTranslator() {
     }
 
     async function fetchTranslations(texts: string[]) {
+      const protectedTexts = texts.map(protectBrands);
       const response = await fetch(`${apiUrl}/localization/page`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texts, targetLanguage: language }),
+        body: JSON.stringify({ texts: protectedTexts.map((item) => item.value), targetLanguage: language }),
       });
       const body = await response.json().catch(() => ({})) as { translations?: string[]; message?: string };
       if (!response.ok || !body.translations || body.translations.length !== texts.length) {
         throw new Error(body.message || "This page could not be translated.");
       }
-      return body.translations;
+      return body.translations.map((translation, index) =>
+        restoreSafeTranslation(texts[index] ?? "", translation, protectedTexts[index]?.brands ?? []),
+      );
     }
 
     async function flush() {

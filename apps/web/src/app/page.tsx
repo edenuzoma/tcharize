@@ -430,7 +430,7 @@ export default function HomePage() {
                     }
                     className="mt-8 w-full"
                   >
-                    <Link href="/signup">Choose {plan.name}</Link>
+                    <Link href="/signup">{t("getStarted")}</Link>
                   </Button>
                 </Card>
               </Reveal>

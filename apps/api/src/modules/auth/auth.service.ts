@@ -269,10 +269,11 @@ export class AuthService {
             htmlContent: email.html,
             textContent: email.text,
           }),
-          signal: AbortSignal.timeout(15_000),
+          signal: AbortSignal.timeout(8_000),
         });
         if (response.ok) return true;
         this.logger.error(`Brevo API email failed with status ${response.status}.`);
+        if (response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429) return false;
       } catch (error) {
         this.logger.error(`Brevo API email failed: ${error instanceof Error ? error.message : "unknown error"}`);
       }
