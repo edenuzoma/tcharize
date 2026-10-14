@@ -273,7 +273,16 @@ export class AuthService {
         });
         if (response.ok) return true;
         this.logger.error(`Brevo API email failed with status ${response.status}.`);
-        if (response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429) return false;
+        // A stale API key must not block mail when valid SMTP credentials are
+        // configured. Brevo manages API and SMTP keys separately, so falling
+        // back here also makes key rotation safe for users already signing up.
+        if (
+          response.status >= 400
+          && response.status < 500
+          && response.status !== 408
+          && response.status !== 429
+          && (!user || !password)
+        ) return false;
       } catch (error) {
         this.logger.error(`Brevo API email failed: ${error instanceof Error ? error.message : "unknown error"}`);
       }

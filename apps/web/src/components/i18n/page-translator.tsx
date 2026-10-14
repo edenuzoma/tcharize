@@ -49,7 +49,7 @@ function restoreSafeTranslation(original: string, candidate: string, brands: str
 
 function readCache(language: string, pathname: string) {
   try {
-    const raw = sessionStorage.getItem(`tcharize-page-v2:${pathname}:${language}`);
+    const raw = sessionStorage.getItem(`tcharize-page-v3:${pathname}:${language}`);
     return raw ? new Map<string, string>(JSON.parse(raw) as Array<[string, string]>) : new Map<string, string>();
   } catch {
     return new Map<string, string>();
@@ -195,7 +195,7 @@ export function PageTranslator() {
             translatedValues.current.set(node, node.nodeValue.trim());
           }
         }
-        sessionStorage.setItem(`tcharize-page-v2:${pathname}:${language}`, JSON.stringify([...cache]));
+        sessionStorage.setItem(`tcharize-page-v3:${pathname}:${language}`, JSON.stringify([...cache]));
         document.documentElement.dataset.translationState = "ready";
       } catch (error) {
         document.documentElement.dataset.translationState = "error";
