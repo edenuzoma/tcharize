@@ -25,8 +25,22 @@ export class LocalizationService {
     private readonly db: DatabaseService,
   ) {}
 
-  async translatePage(texts: string[], targetLanguage: string) {
-    return this.natlas.translatePage(texts, targetLanguage);
+  async translatePage(texts: string[], targetLanguage: string, organizationId?: string) {
+    const wordCount = texts.reduce((total, text) => total + countWords(text), 0);
+    const subscription = organizationId
+      ? await this.getActiveSubscription(organizationId, wordCount)
+      : undefined;
+    const translations = await this.natlas.translatePage(texts, targetLanguage);
+    if (organizationId && subscription) {
+      await this.chargeUsage(organizationId, subscription.wordLimit, wordCount);
+    }
+    return translations;
+  }
+
+  async chargeExternalUsage(organizationId: string, texts: string[]) {
+    const wordCount = texts.reduce((total, text) => total + countWords(text), 0);
+    const subscription = await this.getActiveSubscription(organizationId, wordCount);
+    await this.chargeUsage(organizationId, subscription.wordLimit, wordCount);
   }
 
   async translate(input: unknown, organizationId?: string): Promise<TranslateResponse> {
@@ -202,6 +216,31 @@ export class LocalizationService {
       totalChanged: translations.length,
       targetLanguage,
     };
+  }
+
+  private async getActiveSubscription(organizationId: string, wordCount: number) {
+    const subscription = await this.db.subscription.findUnique({ where: { organizationId } });
+    if (!subscription || subscription.status !== "ACTIVE" || subscription.currentPeriodEnd <= new Date()) {
+      throw new HttpException("Your plan is not active. Open billing to continue.", HttpStatus.PAYMENT_REQUIRED);
+    }
+    if (subscription.wordsUsed + wordCount > subscription.wordLimit) {
+      throw new HttpException("Your word limit is used up. Choose a new plan to continue.", HttpStatus.PAYMENT_REQUIRED);
+    }
+    return subscription;
+  }
+
+  private async chargeUsage(organizationId: string, wordLimit: number, wordCount: number) {
+    const charged = await this.db.subscription.updateMany({
+      where: {
+        organizationId,
+        status: "ACTIVE",
+        wordsUsed: { lte: Math.max(0, wordLimit - wordCount) },
+      },
+      data: { wordsUsed: { increment: wordCount } },
+    });
+    if (charged.count !== 1) {
+      throw new HttpException("Your word limit is used up. Choose a new plan to continue.", HttpStatus.PAYMENT_REQUIRED);
+    }
   }
 
   async listJobs(projectId?: string, limit = 50) {

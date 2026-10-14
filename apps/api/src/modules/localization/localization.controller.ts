@@ -34,27 +34,9 @@ export class LocalizationController {
     const projectId = typeof body === "object" && body !== null && "projectId" in body && typeof body.projectId === "string"
       ? body.projectId
       : undefined;
-    const authorization = req.headers.authorization;
-    const bearer = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : undefined;
-    const cookieToken = req.headers.cookie
-      ?.split(";")
-      .map((part) => part.trim().split("="))
-      .find(([name]) => name === "tcharize_session")?.[1];
-    let organizationId: string | undefined;
-
-    if (bearer?.startsWith("tch_live_")) {
-      const organization = await this.authService.validateApiKey(bearer);
-      if (!organization) throw new UnauthorizedException("That API key is not valid.");
-      organizationId = organization.id;
-      if (projectId) await this.authService.assertProjectOrganizationAccess(organization.id, projectId);
-    } else if (bearer || cookieToken) {
-      const user = await this.authService.validateToken(bearer ?? decodeURIComponent(cookieToken ?? ""));
-      if (projectId) {
-        const project = await this.authService.assertProjectAccess(user.id, projectId);
-        organizationId = project.organizationId;
-      }
-    } else if (projectId) {
-      throw new UnauthorizedException("Sign in or use an API key for project translations.");
+    const { bearer, organizationId } = await this.resolveOrganization(req, projectId);
+    if (!organizationId && !this.isFirstPartyRequest(req)) {
+      throw new UnauthorizedException("Use a Tcharize API key for product translations.");
     }
 
     const identity = bearer ?? req.ip ?? req.socket.remoteAddress ?? "unknown";
@@ -71,8 +53,13 @@ export class LocalizationController {
     if (typeof body.targetLanguage !== "string" || !["ha", "ig", "yo", "pcm"].includes(body.targetLanguage)) {
       throw new BadRequestException("Choose Hausa, Igbo, Yoruba, or Nigerian Pidgin.");
     }
-    await this.rateLimit.consume("public-page-translate", req.ip ?? req.socket.remoteAddress ?? "unknown", 30, 60);
-    return { translations: await this.localizationService.translatePage(body.texts, body.targetLanguage) };
+    const { bearer, organizationId } = await this.resolveOrganization(req);
+    if (!organizationId && !this.isFirstPartyRequest(req)) {
+      throw new UnauthorizedException("Add your Tcharize API key to translate another website.");
+    }
+    const identity = bearer ?? req.ip ?? req.socket.remoteAddress ?? "unknown";
+    await this.rateLimit.consume(organizationId ? "workspace-page-translate" : "public-page-translate", identity, organizationId ? 120 : 30, 60);
+    return { translations: await this.localizationService.translatePage(body.texts, body.targetLanguage, organizationId) };
   }
 
   @Post("batch")
@@ -111,5 +98,42 @@ export class LocalizationController {
   async deleteGlossary(@Param("id") id: string, @Req() req: { user: { id: string } }) {
     await this.authService.assertGlossaryAccess(req.user.id, id);
     return this.localizationService.deleteGlossary(id);
+  }
+
+  private async resolveOrganization(req: Request, projectId?: string) {
+    const authorization = req.headers.authorization;
+    const bearer = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : undefined;
+    const cookieToken = req.headers.cookie
+      ?.split(";")
+      .map((part) => part.trim().split("="))
+      .find(([name]) => name === "tcharize_session")?.[1];
+
+    if (bearer?.startsWith("tch_live_")) {
+      const organization = await this.authService.validateApiKey(bearer);
+      if (!organization) throw new UnauthorizedException("That API key is not valid.");
+      if (projectId) await this.authService.assertProjectOrganizationAccess(organization.id, projectId);
+      return { bearer, organizationId: organization.id };
+    }
+
+    if (bearer || cookieToken) {
+      const user = await this.authService.validateToken(bearer ?? decodeURIComponent(cookieToken ?? ""));
+      if (projectId) {
+        const project = await this.authService.assertProjectAccess(user.id, projectId);
+        return { bearer, organizationId: project.organizationId };
+      }
+      return { bearer, organizationId: await this.authService.getDefaultOrganizationId(user.id) };
+    }
+
+    return { bearer: undefined, organizationId: undefined };
+  }
+
+  private isFirstPartyRequest(req: Request) {
+    const origin = req.headers.origin;
+    if (!origin) return false;
+    const allowed = (process.env.WEB_ORIGIN ?? "http://localhost:3000")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return allowed.includes(origin);
   }
 }

@@ -47,8 +47,8 @@ export class AuthController {
     return result;
   }
 
-  @Post("otp/request")
-  async requestOtp(@Body() body: unknown) {
+  @Post("forgot-password/request")
+  async requestPasswordReset(@Body() body: unknown) {
     return this.authService.requestOtp(body);
   }
 

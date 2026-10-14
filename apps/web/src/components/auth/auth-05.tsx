@@ -65,7 +65,7 @@ export function Auth05({ mode }: Auth05Props) {
     event.preventDefault();
     void run(async () => {
       if (!codeSent) {
-        const data = await post("/auth/otp/request", { email });
+        const data = await post("/auth/forgot-password/request", { email });
         setMessage(data.message || "Check your email for a reset code."); setCodeSent(true); return;
       }
       await post("/auth/reset-password", { email, code, newPassword });

@@ -7,12 +7,14 @@ main { padding: 22px; }
 .brand strong { display: block; font-size: 24px; }
 .brand span { color: #6f6677; font-size: 12px; }
 label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; }
-select, button { width: 100%; border-radius: 14px; font: inherit; font-weight: 700; }
-select { padding: 13px; border: 2px solid #e5ddeb; background: white; }
+select, input, button { width: 100%; border-radius: 14px; font: inherit; font-weight: 700; }
+select, input { padding: 13px; border: 2px solid #e5ddeb; background: white; }
+input { margin-bottom: 2px; font-family: ui-monospace, monospace; font-size: 12px; }
 button { cursor: pointer; margin-top: 12px; padding: 13px; border: 0; }
 button:disabled { cursor: wait; opacity: .6; }
 .primary { color: #1d1427; background: #9eff1f; box-shadow: 0 4px 0 #4e8f00; }
 .secondary { color: white; background: #801fff; box-shadow: 0 4px 0 #4a079d; }
+.key-button { margin: 8px 0 20px; color: #801fff; border: 2px solid #801fff; background: white; }
 .status { min-height: 36px; margin: 20px 0 0; padding: 12px; border-radius: 12px; color: #5a4e64; background: white; font-size: 13px; }
 .privacy { color: #7d7385; text-align: center; font-size: 11px; }
 

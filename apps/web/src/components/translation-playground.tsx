@@ -26,6 +26,7 @@ export function TranslationPlayground() {
         `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1"}/localization/translate`,
         {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text,
@@ -66,6 +67,7 @@ export function TranslationPlayground() {
         `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1"}/speech/synthesize`,
         {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: result.translation,

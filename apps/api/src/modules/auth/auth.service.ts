@@ -54,6 +54,11 @@ export class AuthService {
     if (count > limit) throw new BadRequestException("Please wait a little, then try again.");
   }
 
+  private async releaseRateLimit(key: string) {
+    const count = await this.redis.connection.decr(key);
+    if (count <= 0) await this.redis.connection.del(key);
+  }
+
   private hashOtp(code: string) {
     return createHmac("sha256", this.jwtSecret).update(code).digest("hex");
   }
@@ -108,7 +113,8 @@ export class AuthService {
     const parsed = passwordSignupSchema.safeParse(input);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues.map((i) => i.message).join(" "));
     const { email, password, displayName, organizationName, accountType } = parsed.data;
-    await this.checkRateLimit(`auth:signup:${email}`, 3, 15 * 60);
+    const rateLimitKey = `auth:signup:${email}`;
+    await this.checkRateLimit(rateLimitKey, 3, 15 * 60);
     const existing = await this.db.user.findUnique({ where: { email } });
     if (existing?.emailVerifiedAt) throw new BadRequestException("This email already has an account. Sign in instead.");
     const passwordHash = await this.hashPassword(password);
@@ -117,7 +123,12 @@ export class AuthService {
       : await this.db.user.create({ data: { email, displayName, passwordHash } });
     const pending: PendingSignup = { displayName, organizationName, accountType };
     await this.redis.connection.set(`auth:pending-signup:${email}`, JSON.stringify(pending), "EX", 15 * 60);
-    await this.issueOtp(user.id, email, "SIGNUP");
+    try {
+      await this.issueOtp(user.id, email, "SIGNUP");
+    } catch (error) {
+      await this.releaseRateLimit(rateLimitKey);
+      throw error;
+    }
     return { message: "We sent a 6-digit code to your email.", email };
   }
 
@@ -173,10 +184,26 @@ export class AuthService {
   async requestOtp(input: unknown): Promise<{ message: string }> {
     const parsed = requestOtpSchema.safeParse(input);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues.map((i) => i.message).join(" "));
-    await this.checkRateLimit(`auth:reset:${parsed.data.email}`, 3, 15 * 60);
+    const rateLimitKey = `auth:reset:${parsed.data.email}`;
+    await this.checkRateLimit(rateLimitKey, 3, 15 * 60);
     const user = await this.db.user.findUnique({ where: { email: parsed.data.email } });
-    if (user?.emailVerifiedAt) await this.issueOtp(user.id, user.email, "PASSWORD_RESET");
+    if (user?.emailVerifiedAt) {
+      try {
+        await this.issueOtp(user.id, user.email, "PASSWORD_RESET");
+      } catch (error) {
+        await this.releaseRateLimit(rateLimitKey);
+        throw error;
+      }
+    }
     return { message: "If that email has an account, we sent a reset code." };
+  }
+
+  async getDefaultOrganizationId(userId: string) {
+    const membership = await this.db.membership.findFirst({
+      where: { userId },
+      select: { organizationId: true },
+    });
+    return membership?.organizationId;
   }
 
   async resetPassword(input: unknown): Promise<AuthResponse> {

@@ -14,11 +14,11 @@ const apiUrl = import.meta.env.WXT_API_URL
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: unknown) => {
     if (isBatchMessage(message)) {
-      return fetch(`${apiUrl}/localization/page`, {
+      return getApiKey().then((apiKey) => fetch(`${apiUrl}/localization/page`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({ texts: message.payload.texts, targetLanguage: message.payload.targetLanguage }),
-      }).then(async (response) => {
+      })).then(async (response) => {
         const body = (await response.json()) as { translations?: string[]; message?: string };
         if (!response.ok) throw new Error(body.message ?? "Batch translation failed.");
         return {
@@ -30,11 +30,11 @@ export default defineBackground(() => {
     }
 
     if (isTranslateMessage(message)) {
-      return fetch(`${apiUrl}/localization/translate`, {
+      return getApiKey().then((apiKey) => fetch(`${apiUrl}/localization/translate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify(message.payload),
-      }).then(async (response) => {
+      })).then(async (response) => {
         const body = (await response.json()) as TranslateResponse & { message?: string };
         if (!response.ok) throw new Error(body.message ?? "Translation failed.");
         return body;
@@ -42,6 +42,13 @@ export default defineBackground(() => {
     }
   });
 });
+
+async function getApiKey() {
+  const stored = await browser.storage.local.get("tcharizeApiKey");
+  const apiKey = typeof stored.tcharizeApiKey === "string" ? stored.tcharizeApiKey.trim() : "";
+  if (!apiKey) throw new Error("Add your Tcharize API key in the extension first.");
+  return apiKey;
+}
 
 function isTranslateMessage(value: unknown): value is { type: "TRANSLATE_TEXT"; payload: TranslateRequest } {
   return typeof value === "object" && value !== null && "type" in value && value.type === "TRANSLATE_TEXT" && "payload" in value;
