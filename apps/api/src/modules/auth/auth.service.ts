@@ -26,6 +26,7 @@ import {
 } from "@tcharize/contracts";
 import { DatabaseService } from "../../infrastructure/database/database.service";
 import { RedisService } from "../../infrastructure/redis/redis.service";
+import { renderOtpEmail, renderWelcomeEmail, type AuthEmail } from "./auth-emails";
 
 const scrypt = promisify(scryptCallback);
 type OtpPurpose = "SIGNUP" | "PASSWORD_RESET";
@@ -88,7 +89,7 @@ export class AuthService {
     await this.db.otpCode.create({
       data: { userId, purpose, codeHash: this.hashOtp(code), expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
     });
-    if (!(await this.sendBrevoEmail(email, code, purpose))) {
+    if (!(await this.sendEmail(email, renderOtpEmail(code, purpose)))) {
       throw new BadRequestException("We could not send your code. Please try again.");
     }
   }
@@ -163,6 +164,13 @@ export class AuthService {
       }
     });
     await this.redis.connection.del(`auth:pending-signup:${email}`);
+    const welcomeEmail = renderWelcomeEmail(
+      pending.displayName,
+      process.env.WEB_ORIGIN?.split(",")[0]?.trim() || "http://localhost:3000",
+    );
+    if (!(await this.sendEmail(user.email, welcomeEmail))) {
+      this.logger.warn(`Welcome email could not be sent for user ${user.id}.`);
+    }
     return this.authResponse(user.id, user.email, user.displayName);
   }
 
@@ -241,7 +249,7 @@ export class AuthService {
     return `${header}.${payload}.${signature}`;
   }
 
-  private async sendBrevoEmail(to: string, code: string, purpose: OtpPurpose) {
+  private async sendEmail(to: string, email: AuthEmail) {
     const apiKey = process.env.BREVO_API_KEY;
     const host = process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com";
     const port = Number(process.env.BREVO_SMTP_PORT || 587);
@@ -249,14 +257,18 @@ export class AuthService {
     const password = process.env.BREVO_SMTP_KEY;
     const senderEmail = process.env.BREVO_SENDER_EMAIL;
     if (!senderEmail || (!apiKey && (!user || !password))) { this.logger.error("Brevo email is not configured."); return false; }
-    const subject = purpose === "SIGNUP" ? "Verify your Tcharize account" : "Reset your Tcharize password";
-    const htmlContent = `<div style="font-family:system-ui;max-width:500px;margin:auto;padding:24px"><h1 style="color:#801fff">Tcharize</h1><p>${purpose === "SIGNUP" ? "Use this code to finish signing up." : "Use this code to reset your password."}</p><p style="background:#9eff1f;color:#1d1427;font-size:30px;font-weight:700;letter-spacing:6px;padding:16px;text-align:center;border-radius:14px">${code}</p><p>This code ends in 10 minutes. Do not share it.</p></div>`;
     if (apiKey) {
       try {
         const response = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
           headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" },
-          body: JSON.stringify({ sender: { name: "Tcharize", email: senderEmail }, to: [{ email: to }], subject, htmlContent }),
+          body: JSON.stringify({
+            sender: { name: email.senderName, email: senderEmail },
+            to: [{ email: to }],
+            subject: email.subject,
+            htmlContent: email.html,
+            textContent: email.text,
+          }),
           signal: AbortSignal.timeout(15_000),
         });
         if (response.ok) return true;
@@ -277,10 +289,11 @@ export class AuthService {
         socketTimeout: 15_000,
       });
       await transport.sendMail({
-        from: { name: "Tcharize", address: senderEmail },
+        from: { name: email.senderName, address: senderEmail },
         to,
-        subject,
-        html: htmlContent,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
       });
       return true;
     } catch (error) {
