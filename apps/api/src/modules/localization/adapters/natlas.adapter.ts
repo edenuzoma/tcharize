@@ -17,7 +17,7 @@ const protectedTerms = [
   "WhoYouAre", "Google",
   "English", "Hausa", "Igbo", "Yorùbá", "Naijá", "Nigerian Pidgin",
 ] as const;
-const unsafeTranslation = /translate\s+(?:the\s+following|this|from)|\b(?:user|assistant|system)\b\s*:|<\/?(?:system|user|assistant)>/iu;
+const unsafeTranslation = /translate\s+(?:the\s+following|this|from)|\b(?:user|assistant|system)\b|<\/?(?:system|user|assistant)>/iu;
 
 function escapePattern(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

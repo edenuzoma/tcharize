@@ -102,6 +102,18 @@ describe("NatlasAdapter", () => {
     await expect(adapter.translatePage(["Welcome back"], "ig")).resolves.toEqual(["Welcome back"]);
   });
 
+  it("drops leaked role prefixes even when the model omits a colon", async () => {
+    const mockConfig = {
+      get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
+    } as unknown as ConfigService;
+    adapter = new NatlasAdapter(mockConfig);
+    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({
+      translations: ["user Amsa tambaya game da aikace-aikacen software."],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await expect(adapter.translatePage(["How it works"], "ha")).resolves.toEqual(["How it works"]);
+  });
+
   it("retries page text that the batch model leaves in English", async () => {
     const mockConfig = {
       get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
