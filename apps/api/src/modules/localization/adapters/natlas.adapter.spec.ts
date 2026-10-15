@@ -132,6 +132,19 @@ describe("NatlasAdapter", () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("skips expensive quality retries in fast mode", async () => {
+    const mockConfig = {
+      get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
+    } as unknown as ConfigService;
+    adapter = new NatlasAdapter(mockConfig);
+    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({
+      translations: ["How it works"],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await expect(adapter.translatePage(["How it works"], "ig", "fast")).resolves.toEqual(["How it works"]);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("caps page-quality retries so a slow model cannot hold the whole page open", async () => {
     const mockConfig = {
       get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),

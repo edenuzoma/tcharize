@@ -171,7 +171,11 @@ export class NatlasAdapter {
     }
   }
 
-  async translatePage(texts: string[], targetLanguage: string): Promise<string[]> {
+  async translatePage(
+    texts: string[],
+    targetLanguage: string,
+    mode: "fast" | "quality" = "quality",
+  ): Promise<string[]> {
     const baseUrl = this.config.get<string>("NATLAS_BASE_URL") || process.env.NATLAS_BASE_URL;
     const apiKey = this.config.get<string>("NATLAS_API_KEY") || this.config.get<string>("HUGGINGFACE_TOKEN") || process.env.NATLAS_API_KEY;
     if (!baseUrl || baseUrl.startsWith("https://huggingface.co/NCAIR1")) {
@@ -192,7 +196,7 @@ export class NatlasAdapter {
         const result = await response.json() as { translations?: string[] };
         if (!result.translations || result.translations.length !== texts.length) throw new Error("Pidgin provider returned an incomplete page.");
         const restored = result.translations.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
-        return this.retryUnchangedPageText(texts, restored, targetLanguage);
+        return mode === "fast" ? restored : this.retryUnchangedPageText(texts, restored, targetLanguage);
       }
 
       const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/translations/natlas`, {
@@ -208,7 +212,7 @@ export class NatlasAdapter {
         throw new Error("N-ATLaS returned an incomplete translation list.");
       }
       const restored = translated.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
-      return this.retryUnchangedPageText(texts, restored, targetLanguage);
+      return mode === "fast" ? restored : this.retryUnchangedPageText(texts, restored, targetLanguage);
     } catch (error) {
       this.logger.error(`Page translation failed: ${error instanceof Error ? error.message : "unknown error"}`);
       throw new BadGatewayException("We could not translate this page. Try again.");

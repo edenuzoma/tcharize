@@ -40,7 +40,7 @@ describe("LocalizationController access", () => {
       { texts: ["Welcome"], targetLanguage: "yo" },
       request({ origin: "https://tcharize.up.railway.app" }),
     )).resolves.toEqual({ translations: ["Kaabo"] });
-    expect(localization.translatePage).toHaveBeenCalledWith(["Welcome"], "yo", undefined);
+    expect(localization.translatePage).toHaveBeenCalledWith(["Welcome"], "yo", undefined, "quality");
   });
 
   it("requires an API key for another website", async () => {
@@ -57,7 +57,16 @@ describe("LocalizationController access", () => {
       { texts: ["Welcome"], targetLanguage: "yo" },
       request({ authorization: "Bearer tch_live_test" }),
     );
-    expect(localization.translatePage).toHaveBeenCalledWith(["Welcome"], "yo", "org-1");
+    expect(localization.translatePage).toHaveBeenCalledWith(["Welcome"], "yo", "org-1", "quality");
     expect(rateLimit.consume).toHaveBeenCalledWith("workspace-page-translate", "tch_live_test", 120, 60);
+  });
+
+  it("passes fast mode through for latency-sensitive websites", async () => {
+    auth.validateApiKey.mockResolvedValue({ id: "org-1" });
+    await controller.translatePage(
+      { texts: ["Welcome"], targetLanguage: "yo", mode: "fast" },
+      request({ authorization: "Bearer tch_live_test" }),
+    );
+    expect(localization.translatePage).toHaveBeenCalledWith(["Welcome"], "yo", "org-1", "fast");
   });
 });

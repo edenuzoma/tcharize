@@ -45,7 +45,7 @@ export class LocalizationController {
   }
 
   @Post("page")
-  async translatePage(@Body() body: { texts?: unknown; targetLanguage?: unknown }, @Req() req: Request) {
+  async translatePage(@Body() body: { texts?: unknown; targetLanguage?: unknown; mode?: unknown }, @Req() req: Request) {
     if (!Array.isArray(body.texts) || body.texts.length < 1 || body.texts.length > 150 ||
       !body.texts.every((text) => typeof text === "string" && text.trim().length > 0 && text.length <= 500)) {
       throw new BadRequestException("Add up to 150 short text items.");
@@ -53,13 +53,23 @@ export class LocalizationController {
     if (typeof body.targetLanguage !== "string" || !["ha", "ig", "yo", "pcm"].includes(body.targetLanguage)) {
       throw new BadRequestException("Choose Hausa, Igbo, Yoruba, or Nigerian Pidgin.");
     }
+    if (body.mode !== undefined && body.mode !== "fast" && body.mode !== "quality") {
+      throw new BadRequestException("Choose fast or quality translation mode.");
+    }
     const { bearer, organizationId } = await this.resolveOrganization(req);
     if (!organizationId && !this.isFirstPartyRequest(req)) {
       throw new UnauthorizedException("Add your Tcharize API key to translate another website.");
     }
     const identity = bearer ?? req.ip ?? req.socket.remoteAddress ?? "unknown";
     await this.rateLimit.consume(organizationId ? "workspace-page-translate" : "public-page-translate", identity, organizationId ? 120 : 30, 60);
-    return { translations: await this.localizationService.translatePage(body.texts, body.targetLanguage, organizationId) };
+    return {
+      translations: await this.localizationService.translatePage(
+        body.texts,
+        body.targetLanguage,
+        organizationId,
+        body.mode === "fast" ? "fast" : "quality",
+      ),
+    };
   }
 
   @Post("batch")

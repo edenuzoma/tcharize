@@ -25,12 +25,17 @@ export class LocalizationService {
     private readonly db: DatabaseService,
   ) {}
 
-  async translatePage(texts: string[], targetLanguage: string, organizationId?: string) {
+  async translatePage(
+    texts: string[],
+    targetLanguage: string,
+    organizationId?: string,
+    mode: "fast" | "quality" = "quality",
+  ) {
     const wordCount = texts.reduce((total, text) => total + countWords(text), 0);
     const subscription = organizationId
       ? await this.getActiveSubscription(organizationId, wordCount)
       : undefined;
-    const translations = await this.natlas.translatePage(texts, targetLanguage);
+    const translations = await this.natlas.translatePage(texts, targetLanguage, mode);
     if (organizationId && subscription) {
       await this.chargeUsage(organizationId, subscription.wordLimit, wordCount);
     }
