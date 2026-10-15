@@ -7,6 +7,11 @@ const ignoredResponseHeaders = new Set([
   "transfer-encoding",
   "connection",
 ]);
+const sessionResponsePaths = new Set([
+  "auth/login",
+  "auth/signup/verify",
+  "auth/reset-password",
+]);
 
 function getUpstreamApiUrl() {
   const configured =
@@ -22,6 +27,7 @@ async function proxyRequest(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await context.params;
+  const routePath = path.join("/");
   const upstream = new URL(`${getUpstreamApiUrl()}/${path.map(encodeURIComponent).join("/")}`);
   upstream.search = request.nextUrl.search;
 
@@ -47,8 +53,22 @@ async function proxyRequest(
         responseHeaders.append(name, value);
       }
     });
-    for (const cookie of response.headers.getSetCookie()) {
-      responseHeaders.append("set-cookie", cookie);
+    if (response.ok && sessionResponsePaths.has(routePath)) {
+      const payload = await response.json() as Record<string, unknown>;
+      const token = payload.token;
+      if (typeof token !== "string" || !token) {
+        return Response.json(
+          { message: "Tcharize could not start your session. Please sign in again." },
+          { status: 502 },
+        );
+      }
+      delete payload.token;
+      responseHeaders.set("set-cookie", createSessionCookie(token));
+      return Response.json(payload, { status: response.status, headers: responseHeaders });
+    }
+
+    if (response.ok && routePath === "auth/logout") {
+      responseHeaders.set("set-cookie", clearSessionCookie());
     }
 
     return new Response(response.body, {
@@ -62,6 +82,16 @@ async function proxyRequest(
       { status: 502 },
     );
   }
+}
+
+function createSessionCookie(token: string) {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `tcharize_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}`;
+}
+
+function clearSessionCookie() {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `tcharize_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
 export const dynamic = "force-dynamic";
