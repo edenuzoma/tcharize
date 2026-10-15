@@ -224,7 +224,9 @@ export class NatlasAdapter {
         const isBrandOnly = protectedTerms.some((term) => term.toLocaleLowerCase() === text.trim().toLocaleLowerCase());
         return !isBrandOnly && text.trim().length > 1 && candidate.trim().toLocaleLowerCase() === text.trim().toLocaleLowerCase();
       })
-      .map(({ index }) => index);
+      .map(({ index }) => index)
+      .sort((left, right) => (texts[right]?.length ?? 0) - (texts[left]?.length ?? 0))
+      .slice(0, 5);
 
     for (let start = 0; start < retryIndexes.length; start += 5) {
       const indexes = retryIndexes.slice(start, start + 5);

@@ -119,4 +119,24 @@ describe("NatlasAdapter", () => {
     await expect(adapter.translatePage(["How it works"], "ig")).resolves.toEqual(["Otu o si arụ ọrụ"]);
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("caps page-quality retries so a slow model cannot hold the whole page open", async () => {
+    const mockConfig = {
+      get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
+    } as unknown as ConfigService;
+    adapter = new NatlasAdapter(mockConfig);
+    const texts = ["One", "Two", "Three", "Four", "Five", "Six", "Seven"];
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ translations: texts }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValue(new Response(JSON.stringify({
+        choices: [{ message: { content: '{"translation":"translated","explanation":""}' } }],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await adapter.translatePage(texts, "ig");
+
+    expect(global.fetch).toHaveBeenCalledTimes(6);
+  });
 });
