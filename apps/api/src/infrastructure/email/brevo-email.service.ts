@@ -1,8 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { AuthEmail } from "../../modules/auth/auth-emails";
-
 interface BrevoErrorBody {
   code?: unknown;
+}
+
+export interface EmailMessage {
+  subject: string;
+  html: string;
+  text: string;
+  senderName: string;
 }
 
 @Injectable()
@@ -10,7 +15,7 @@ export class BrevoEmailService {
   private readonly logger = new Logger(BrevoEmailService.name);
   private readonly endpoint = "https://api.brevo.com/v3/smtp/email";
 
-  async send(to: string, email: AuthEmail): Promise<boolean> {
+  async send(to: string, email: EmailMessage): Promise<boolean> {
     const apiKey = process.env.BREVO_API_KEY;
     const senderEmail = process.env.BREVO_SENDER_EMAIL;
     if (!apiKey || !senderEmail) {

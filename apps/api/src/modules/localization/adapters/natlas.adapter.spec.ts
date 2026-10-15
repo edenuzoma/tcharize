@@ -101,4 +101,22 @@ describe("NatlasAdapter", () => {
 
     await expect(adapter.translatePage(["Welcome back"], "ig")).resolves.toEqual(["Welcome back"]);
   });
+
+  it("retries page text that the batch model leaves in English", async () => {
+    const mockConfig = {
+      get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
+    } as unknown as ConfigService;
+    adapter = new NatlasAdapter(mockConfig);
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ translations: ["How it works"] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        choices: [{ message: { content: '{"translation":"Otu o si arụ ọrụ","explanation":""}' } }],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await expect(adapter.translatePage(["How it works"], "ig")).resolves.toEqual(["Otu o si arụ ọrụ"]);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
 });

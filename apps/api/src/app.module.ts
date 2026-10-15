@@ -7,6 +7,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { LocalizationModule } from "./modules/localization/localization.module";
 import { SpeechModule } from "./modules/speech/speech.module";
 import { BillingModule } from "./modules/billing/billing.module";
+import { ContactModule } from "./modules/contact/contact.module";
 import { validateEnvironment } from "./config/validate-environment";
 
 @Module({
@@ -23,6 +24,7 @@ import { validateEnvironment } from "./config/validate-environment";
     LocalizationModule,
     SpeechModule,
     BillingModule,
+    ContactModule,
   ],
 })
 export class AppModule {}

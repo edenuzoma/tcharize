@@ -13,17 +13,30 @@ export default function ContactPage() {
     projectType: "web-localization",
     budget: "builder",
     message: "",
+    website: "",
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch("/api/backend/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const result = await response.json().catch(() => ({})) as { message?: string };
+      if (!response.ok) throw new Error(result.message || "We could not send your message. Try again.");
       setSubmitted(true);
-    }, 600);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "We could not send your message. Try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -65,6 +78,24 @@ export default function ContactPage() {
               <p className="mt-1 text-xs text-ink/60">
                 Fill in the details below to receive architectural advice or dedicated enterprise pricing.
               </p>
+
+              {error ? (
+                <p role="alert" className="mt-5 rounded-2xl border border-red-400 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-200">
+                  {error}
+                </p>
+              ) : null}
+
+              <div className="hidden" aria-hidden="true">
+                <label htmlFor="website">Website</label>
+                <input
+                  id="website"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={form.website}
+                  onChange={(event) => setForm({ ...form, website: event.target.value })}
+                />
+              </div>
 
               <div className="mt-8 grid gap-6 sm:grid-cols-2">
                 <div>
@@ -163,6 +194,7 @@ export default function ContactPage() {
               <div className="mt-8">
                 <Button
                   variant="primary"
+                  type="submit"
                   className="w-full text-xs font-bold sm:w-auto"
                   disabled={loading}
                 >

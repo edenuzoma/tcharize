@@ -14,9 +14,10 @@ const protectedTerms = [
   "Awarri Technologies", "NITHUB-AI", "N-ATLaS", "TypeScript", "PostgreSQL",
   "Cloudflare", "LogoForge", "Tcharize", "Next.js", "NestJS", "Node.js",
   "Paystack", "FMCIDE", "React", "Redis", "GitHub", "API", "Git",
+  "WhoYouAre", "Google",
   "English", "Hausa", "Igbo", "Yorùbá", "Naijá", "Nigerian Pidgin",
 ] as const;
-const unsafeTranslation = /translate\s+(?:the\s+following|from)|\buser\b\s*:|\bassistant\b\s*:|<\/?(?:system|user|assistant)>/iu;
+const unsafeTranslation = /translate\s+(?:the\s+following|this|from)|\b(?:user|assistant|system)\b\s*:|<\/?(?:system|user|assistant)>/iu;
 
 function escapePattern(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -54,6 +55,7 @@ export class NatlasAdapter {
     const apiKey = this.config.get<string>("NATLAS_API_KEY") || this.config.get<string>("HUGGINGFACE_TOKEN") || process.env.NATLAS_API_KEY;
     const model = this.config.get<string>("NATLAS_MODEL_ID") || process.env.NATLAS_MODEL_ID || "NCAIR1/N-ATLaS";
     const isRepositoryPage = baseUrl?.startsWith("https://huggingface.co/NCAIR1") ?? false;
+    const protectedInput = protectText(request.text);
 
     this.logger.log(`Translating with ${model}`);
 
@@ -91,7 +93,7 @@ export class NatlasAdapter {
               role: "user",
               content: `Translate from ${languageNames[request.sourceLanguage]} to ${languageNames[request.targetLanguage]}. Use natural, culturally clear language. ${
                 request.explain ? "Explain the important word choices in one short, simple sentence." : "Leave explanation empty."
-              }\n\nText:\n${request.text}`,
+              }\n\nText:\n${protectedInput.value}`,
             },
           ],
         }),
@@ -158,7 +160,7 @@ export class NatlasAdapter {
       }
 
       return {
-        translation: translationText.trim(),
+        translation: restoreTranslation(request.text, translationText, protectedInput.terms),
         explanation: explanationText || undefined,
         provider: "n-atlas",
         model: result.model ?? model,
@@ -189,7 +191,8 @@ export class NatlasAdapter {
         if (!response.ok) throw new Error(`Pidgin provider returned ${response.status}`);
         const result = await response.json() as { translations?: string[] };
         if (!result.translations || result.translations.length !== texts.length) throw new Error("Pidgin provider returned an incomplete page.");
-        return result.translations.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
+        const restored = result.translations.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
+        return this.retryUnchangedPageText(texts, restored, targetLanguage);
       }
 
       const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/translations/natlas`, {
@@ -204,11 +207,44 @@ export class NatlasAdapter {
       if (!Array.isArray(translated) || translated.length !== texts.length || !translated.every((item) => typeof item === "string")) {
         throw new Error("N-ATLaS returned an incomplete translation list.");
       }
-      return translated.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
+      const restored = translated.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
+      return this.retryUnchangedPageText(texts, restored, targetLanguage);
     } catch (error) {
       this.logger.error(`Page translation failed: ${error instanceof Error ? error.message : "unknown error"}`);
       throw new BadGatewayException("We could not translate this page. Try again.");
     }
+  }
+
+  private async retryUnchangedPageText(texts: string[], translations: string[], targetLanguage: string) {
+    const results = [...translations];
+    const retryIndexes = texts
+      .map((text, index) => ({ text, index }))
+      .filter(({ text, index }) => {
+        const candidate = results[index] ?? "";
+        const isBrandOnly = protectedTerms.some((term) => term.toLocaleLowerCase() === text.trim().toLocaleLowerCase());
+        return !isBrandOnly && text.trim().length > 1 && candidate.trim().toLocaleLowerCase() === text.trim().toLocaleLowerCase();
+      })
+      .map(({ index }) => index);
+
+    for (let start = 0; start < retryIndexes.length; start += 5) {
+      const indexes = retryIndexes.slice(start, start + 5);
+      await Promise.all(indexes.map(async (index) => {
+        const sourceText = texts[index];
+        if (!sourceText) return;
+        try {
+          const result = await this.translate({
+            text: sourceText,
+            sourceLanguage: "en",
+            targetLanguage: targetLanguage as TranslateRequest["targetLanguage"],
+            explain: false,
+          });
+          results[index] = result.translation;
+        } catch (error) {
+          this.logger.warn(`Page text retry failed: ${error instanceof Error ? error.message : "unknown error"}`);
+        }
+      }));
+    }
+    return results;
   }
 
   private async translatePidgin(baseUrl: string, apiKey: string | undefined, request: TranslateRequest): Promise<TranslateResponse> {

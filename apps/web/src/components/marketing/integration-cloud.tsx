@@ -38,9 +38,6 @@ export function IntegrationCloud() {
           </div>
         ))}
       </div>
-      <p className="mt-5 text-center text-xs text-ink/40">
-        Brand artwork supplied by LogoForge for product identification.
-      </p>
     </section>
   );
 }

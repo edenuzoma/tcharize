@@ -2,7 +2,7 @@ import { browser } from "wxt/browser";
 import type { BatchTranslateResponse, LanguageCode } from "@tcharize/contracts";
 
 const originalText = new Map<Node, string>();
-const translatedNodes = new WeakSet<Node>();
+let translatedNodes = new WeakSet<Node>();
 
 const BLOCKED_TAGS = new Set([
   "SCRIPT",
@@ -37,6 +37,7 @@ export default defineContentScript({
           node.textContent = text;
         }
         originalText.clear();
+        translatedNodes = new WeakSet<Node>();
         return { changed: 0 };
       }
 
@@ -128,8 +129,8 @@ async function translatePage(targetLanguage: LanguageCode): Promise<number> {
           }
         }
       }
-    } catch (e) {
-      console.warn("Tcharize batch translation error:", e);
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("Tcharize could not translate this page.");
     }
   }
 
