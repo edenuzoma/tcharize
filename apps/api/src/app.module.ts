@@ -7,12 +7,14 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { LocalizationModule } from "./modules/localization/localization.module";
 import { SpeechModule } from "./modules/speech/speech.module";
 import { BillingModule } from "./modules/billing/billing.module";
+import { validateEnvironment } from "./config/validate-environment";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ["../../.env.local", "../../.env", ".env.local", ".env"],
+      validate: validateEnvironment,
     }),
     DatabaseModule,
     RedisModule,

@@ -57,13 +57,13 @@ export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 
 export const passwordLoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Please provide a valid email address."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
 });
 export type PasswordLoginInput = z.infer<typeof passwordLoginSchema>;
 
 export const passwordSignupSchema = z.object({
   email: z.string().trim().toLowerCase().email("Please provide a valid email address."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
   displayName: z.string().trim().min(1, "Please provide your name.").max(100),
   organizationName: z.string().trim().min(1).max(100).optional(),
   accountType: z.enum(["individual", "team"]).default("individual"),
@@ -79,7 +79,7 @@ export type VerifySignupInput = z.infer<typeof verifySignupSchema>;
 export const resetPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email("Please provide a valid email address."),
   code: z.string().trim().length(6, "The verification code must be 6 digits."),
-  newPassword: z.string().min(6, "Password must be at least 6 characters."),
+  newPassword: z.string().min(8, "Password must be at least 8 characters."),
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 

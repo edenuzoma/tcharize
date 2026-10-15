@@ -15,7 +15,6 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import { promisify } from "node:util";
-import nodemailer from "nodemailer";
 import {
   passwordLoginSchema,
   passwordSignupSchema,
@@ -26,7 +25,8 @@ import {
 } from "@tcharize/contracts";
 import { DatabaseService } from "../../infrastructure/database/database.service";
 import { RedisService } from "../../infrastructure/redis/redis.service";
-import { renderOtpEmail, renderWelcomeEmail, type AuthEmail } from "./auth-emails";
+import { renderOtpEmail, renderWelcomeEmail } from "./auth-emails";
+import { BrevoEmailService } from "../../infrastructure/email/brevo-email.service";
 
 const scrypt = promisify(scryptCallback);
 type OtpPurpose = "SIGNUP" | "PASSWORD_RESET";
@@ -40,6 +40,7 @@ export class AuthService {
   constructor(
     private readonly db: DatabaseService,
     private readonly redis: RedisService,
+    private readonly email: BrevoEmailService,
   ) {}
 
   private get jwtSecret(): string {
@@ -89,7 +90,11 @@ export class AuthService {
     await this.db.otpCode.create({
       data: { userId, purpose, codeHash: this.hashOtp(code), expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
     });
-    if (!(await this.sendEmail(email, renderOtpEmail(code, purpose)))) {
+    if (!(await this.email.send(email, renderOtpEmail(code, purpose)))) {
+      await this.db.otpCode.updateMany({
+        where: { userId, purpose, usedAt: null },
+        data: { usedAt: new Date() },
+      });
       throw new BadRequestException("We could not send your code. Please try again.");
     }
   }
@@ -168,7 +173,7 @@ export class AuthService {
       pending.displayName,
       process.env.WEB_ORIGIN?.split(",")[0]?.trim() || "http://localhost:3000",
     );
-    if (!(await this.sendEmail(user.email, welcomeEmail))) {
+    if (!(await this.email.send(user.email, welcomeEmail))) {
       this.logger.warn(`Welcome email could not be sent for user ${user.id}.`);
     }
     return this.authResponse(user.id, user.email, user.displayName);
@@ -247,69 +252,6 @@ export class AuthService {
     const payload = Buffer.from(JSON.stringify({ sub: userId, email, exp: Math.floor(Date.now() / 1000) + 7 * 86_400 })).toString("base64url");
     const signature = createHmac("sha256", this.jwtSecret).update(`${header}.${payload}`).digest("base64url");
     return `${header}.${payload}.${signature}`;
-  }
-
-  private async sendEmail(to: string, email: AuthEmail) {
-    const apiKey = process.env.BREVO_API_KEY;
-    const host = process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com";
-    const port = Number(process.env.BREVO_SMTP_PORT || 587);
-    const user = process.env.BREVO_SMTP_USER;
-    const password = process.env.BREVO_SMTP_KEY;
-    const senderEmail = process.env.BREVO_SENDER_EMAIL;
-    if (!senderEmail || (!apiKey && (!user || !password))) { this.logger.error("Brevo email is not configured."); return false; }
-    if (apiKey) {
-      try {
-        const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-          method: "POST",
-          headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" },
-          body: JSON.stringify({
-            sender: { name: email.senderName, email: senderEmail },
-            to: [{ email: to }],
-            subject: email.subject,
-            htmlContent: email.html,
-            textContent: email.text,
-          }),
-          signal: AbortSignal.timeout(8_000),
-        });
-        if (response.ok) return true;
-        this.logger.error(`Brevo API email failed with status ${response.status}.`);
-        // A stale API key must not block mail when valid SMTP credentials are
-        // configured. Brevo manages API and SMTP keys separately, so falling
-        // back here also makes key rotation safe for users already signing up.
-        if (
-          response.status >= 400
-          && response.status < 500
-          && response.status !== 408
-          && response.status !== 429
-          && (!user || !password)
-        ) return false;
-      } catch (error) {
-        this.logger.error(`Brevo API email failed: ${error instanceof Error ? error.message : "unknown error"}`);
-      }
-    }
-    if (!user || !password) return false;
-    try {
-      const transport = nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass: password },
-        connectionTimeout: 10_000,
-        greetingTimeout: 10_000,
-        socketTimeout: 15_000,
-      });
-      await transport.sendMail({
-        from: { name: email.senderName, address: senderEmail },
-        to,
-        subject: email.subject,
-        html: email.html,
-        text: email.text,
-      });
-      return true;
-    } catch (error) {
-      this.logger.error(`Brevo email failed: ${error instanceof Error ? error.message : "unknown error"}`);
-      return false;
-    }
   }
 
   async assertOrganizationAccess(userId: string, organizationIdOrSlug: string) {
