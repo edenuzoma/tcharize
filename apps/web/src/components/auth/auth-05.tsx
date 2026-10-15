@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Building2, CheckCircle2, Eye, EyeOff, LoaderCircle, UserRound } from "lucide-react";
 import { Button } from "@tcharize/ui";
 import { BrandLogo } from "@/components/brand-logo";
+import { browserApiUrl } from "@/lib/api-url";
 
 interface Auth05Props { mode: "login" | "signup" | "forgot-password" }
 type AccountType = "individual" | "team";
 
 export function Auth05({ mode }: Auth05Props) {
   const router = useRouter();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+  const apiUrl = browserApiUrl;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");

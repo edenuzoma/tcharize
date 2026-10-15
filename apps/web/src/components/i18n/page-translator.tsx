@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "./language-context";
 import { translations } from "./translations";
 import { getStaticPageCopy } from "./page-copy";
+import { browserApiUrl } from "@/lib/api-url";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+const apiUrl = browserApiUrl;
 const protectedTags = new Set([
   "SCRIPT", "STYLE", "NOSCRIPT", "CODE", "PRE", "SVG",
   "INPUT", "TEXTAREA", "SELECT", "OPTION",

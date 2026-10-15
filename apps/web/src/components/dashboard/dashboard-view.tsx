@@ -16,6 +16,7 @@ import {
 import { Button, Card } from "@tcharize/ui";
 import { type LanguageCode } from "@tcharize/contracts";
 import { TcharizeDashboardShell, type DashboardTab } from "@/components/watermelon/agndex-dashboard/tcharize-dashboard-shell";
+import { browserApiUrl, publicApiUrl } from "@/lib/api-url";
 
 interface Job {
   id: string;
@@ -130,7 +131,7 @@ export function DashboardView() {
   const [newGeneratedKey, setNewGeneratedKey] = useState<string | null>(null);
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+  const apiUrl = browserApiUrl;
   async function loadSession() {
     const response = await fetch(`${apiUrl}/auth/me`, { credentials: "include" });
     if (!response.ok) { router.replace("/login"); return; }
@@ -846,7 +847,7 @@ export function DashboardView() {
                   cURL Example
                 </span>
                 <pre className="mt-2 overflow-x-auto text-xs font-mono text-white/80">
-{`curl -X POST ${apiUrl}/localization/translate \\
+{`curl -X POST ${publicApiUrl}/localization/translate \\
   -H "Authorization: Bearer tch_live_YOUR_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"text": "Welcome to our platform", "sourceLanguage": "en", "targetLanguage": "yo"}'`}

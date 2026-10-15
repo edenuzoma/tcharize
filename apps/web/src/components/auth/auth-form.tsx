@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, KeyRound, LoaderCircle, Mail } from "lucide-react";
 import { Button, Card } from "@tcharize/ui";
 import type { AuthResponse } from "@tcharize/contracts";
+import { browserApiUrl } from "@/lib/api-url";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -21,7 +22,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [infoMessage, setInfoMessage] = useState("");
   const [previewCode, setPreviewCode] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+  const apiUrl = browserApiUrl;
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();

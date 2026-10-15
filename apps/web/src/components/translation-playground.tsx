@@ -8,6 +8,7 @@ import {
 } from "@tcharize/contracts";
 import { Button, Card } from "@tcharize/ui";
 import { ArrowRight, LoaderCircle, Volume2 } from "lucide-react";
+import { browserApiUrl } from "@/lib/api-url";
 
 export function TranslationPlayground() {
   const [text, setText] = useState("Welcome. We are glad you are here.");
@@ -23,7 +24,7 @@ export function TranslationPlayground() {
     setLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1"}/localization/translate`,
+        `${browserApiUrl}/localization/translate`,
         {
           method: "POST",
           credentials: "include",
@@ -64,7 +65,7 @@ export function TranslationPlayground() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1"}/speech/synthesize`,
+        `${browserApiUrl}/speech/synthesize`,
         {
           method: "POST",
           credentials: "include",
