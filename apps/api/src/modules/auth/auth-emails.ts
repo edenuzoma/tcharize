@@ -67,9 +67,9 @@ export function renderOtpEmail(code: string, purpose: OtpPurpose): AuthEmail {
 
 export function renderWelcomeEmail(displayName: string, webOrigin: string): AuthEmail {
   const safeName = escapeHtml(displayName.trim() || "there");
-  const appUrl = `${webOrigin.replace(/\/$/, "")}/dashboard`;
+  const appUrl = `${webOrigin.replace(/\/$/, "")}/login`;
   const subject = "Welcome to Tcharize";
-  const text = `Hi ${displayName.trim() || "there"},\n\nI am Eden Uzoma, the creator of Tcharize (say “Teacher Rise”). Tcharize helps you translate and understand websites, apps, documents, and product words in Nigerian languages.\n\nStart here:\n1. Open your workspace.\n2. Add a project.\n3. Pick a language and translate your first words.\n4. Create an API key when you want to connect your product.\n\nOpen Tcharize: ${appUrl}\nLinkedIn: https://linkedin.com/in/edenuzoma\nTwitter: https://twitter.com/edenuzoma\n\nEden Uzoma\nCreator of Tcharize`;
+  const text = `Hi ${displayName.trim() || "there"},\n\nI am Eden Uzoma, the creator of Tcharize (say “Teacher Rise”). Tcharize helps you translate and understand websites, apps, documents, and product words in Nigerian languages.\n\nStart here:\n1. Open your workspace.\n2. Add a project.\n3. Pick a language and translate your first words.\n4. Create an API key when you want to connect your product.\n\nOpen Tcharize: ${appUrl}\n\nFollow me here. Let’s keep in touch:\nLinkedIn: https://linkedin.com/in/edenuzoma\nTwitter: https://twitter.com/edenuzoma\n\nEden Uzoma\nSoftware Engineer & Creator of Tcharize`;
   const html = shell(subject, `
     <p style="margin:0 0 8px;font:700 13px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:${purple}">You are in</p>
     <h1 style="margin:0 0 14px;font-size:34px;line-height:1.15;color:${ink}">Welcome, ${safeName}.</h1>
@@ -83,8 +83,9 @@ export function renderWelcomeEmail(displayName: string, webOrigin: string): Auth
     </div>
     <p style="margin:28px 0"><a href="${escapeHtml(appUrl)}" style="display:inline-block;padding:14px 22px;border-radius:999px;background:${lime};box-shadow:0 4px 0 #4e8f00;color:${ink};font:700 16px Arial,sans-serif;text-decoration:none">Open your workspace →</a></p>
     <p style="margin:0;font:16px/1.6 Arial,sans-serif;color:#564b5e">Need help? Reply to this email.</p>
-    <p style="margin:22px 0 0;font:16px/1.6 Arial,sans-serif;color:${ink}"><strong>Eden Uzoma</strong><br><span style="color:#6c6174">Creator of Tcharize</span></p>
-    <p style="margin:18px 0 0;font:14px Arial,sans-serif"><a href="https://linkedin.com/in/edenuzoma" style="color:${purple};font-weight:700">LinkedIn</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://twitter.com/edenuzoma" style="color:${purple};font-weight:700">Twitter</a></p>
+    <p style="margin:22px 0 8px;font:15px/1.6 Arial,sans-serif;color:#564b5e">Follow me here. Let’s keep in touch:</p>
+    <p style="margin:0;font:14px Arial,sans-serif"><a href="https://linkedin.com/in/edenuzoma" style="color:${purple};font-weight:700">LinkedIn</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://twitter.com/edenuzoma" style="color:${purple};font-weight:700">Twitter</a></p>
+    <p style="margin:22px 0 0;font:16px/1.6 Arial,sans-serif;color:${ink}"><strong>Eden Uzoma</strong><br><span style="color:#6c6174">Software Engineer &amp; Creator of Tcharize</span></p>
   `);
   return { subject, html, text, senderName: "Eden Uzoma at Tcharize" };
 }

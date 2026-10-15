@@ -22,6 +22,9 @@ describe("auth email templates", () => {
     expect(email.html).toContain("Teacher Rise");
     expect(email.html).toContain("linkedin.com/in/edenuzoma");
     expect(email.html).toContain("twitter.com/edenuzoma");
-    expect(email.html).toContain("https://tcharize.up.railway.app/dashboard");
+    expect(email.html).toContain("Follow me here. Let’s keep in touch:");
+    expect(email.html).toContain("Software Engineer &amp; Creator of Tcharize");
+    expect(email.html).toContain("https://tcharize.up.railway.app/login");
+    expect(email.html).not.toContain("https://tcharize.up.railway.app/dashboard");
   });
 });
