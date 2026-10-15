@@ -441,8 +441,8 @@ export function DashboardView() {
       jobCount={jobs.length}
       glossaryCount={glossary.length}
     >
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
-        <div className="mb-6 flex items-center justify-end">
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
+        <div className="mb-4 flex items-center justify-end">
           <button
             onClick={() => void fetchData()}
             title="Refresh data"
@@ -458,15 +458,15 @@ export function DashboardView() {
         {/* TAB 1: OVERVIEW (Activity Heatmap + Credit Balance + Metrics) */}
         {/* ========================================================= */}
         {activeTab === "overview" && (
-          <div className="mt-8 space-y-8">
+          <div className="mt-5 space-y-5">
             {/* 52-WEEK TRANSLATION ACTIVITY HEATMAP (Lingo.dev Replication) */}
-            <Card className="border-2 border-ink/10 p-6 shadow-sm dark:border-white/10 dark:bg-[#1a1224]">
+            <Card className="border-2 border-ink/10 p-5 shadow-sm dark:border-white/10 dark:bg-[#1a1224]">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink/10 pb-4 dark:border-white/10">
                 <div>
                   <span className="font-mono text-xs font-bold uppercase tracking-wider text-secondary">
                     Translation Activity
                   </span>
-                  <h3 className="mt-1 font-display text-2xl font-bold">
+                  <h3 className="mt-1 font-display text-xl font-bold">
                     {jobs.length} translations processed
                   </h3>
                 </div>
@@ -483,7 +483,7 @@ export function DashboardView() {
               </div>
 
               {/* Heatmap Grid */}
-              <div className="mt-6 overflow-x-auto pb-2">
+              <div className="mt-4 overflow-x-auto pb-1">
                 <div className="flex min-w-[700px] gap-1.5">
                   <div className="flex flex-col justify-between pr-2 text-[10px] font-bold text-ink/40 dark:text-white/30">
                     <span>Mon</span>
@@ -516,12 +516,12 @@ export function DashboardView() {
             </Card>
 
             {/* CREDIT BALANCE & METRICS ROW */}
-            <div className="grid gap-6 md:grid-cols-3">
-              <Card className="border-2 border-ink/10 p-6 dark:border-white/10 dark:bg-[#1a1224]">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="border-2 border-ink/10 p-5 dark:border-white/10 dark:bg-[#1a1224]">
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-secondary">
                   Credit Balance
                 </span>
-                <p className="mt-3 font-display text-4xl">
+                <p className="mt-2 font-display text-3xl">
                   {(wordLimit - wordsUsed).toLocaleString()}{" "}
                   <span className="font-body text-sm text-ink/50 dark:text-white/40">words left</span>
                 </p>
@@ -537,11 +537,11 @@ export function DashboardView() {
                 </div>
               </Card>
 
-              <Card className="border-2 border-ink/10 p-6 dark:border-white/10 dark:bg-[#1a1224]">
+              <Card className="border-2 border-ink/10 p-5 dark:border-white/10 dark:bg-[#1a1224]">
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-secondary">
                   Active Plan
                 </span>
-                <p className="mt-3 font-display text-4xl text-secondary">
+                <p className="mt-2 font-display text-3xl text-secondary">
                   {subscription?.plan || "Builder"}
                 </p>
                 <p className="mt-2 text-xs text-ink/60 dark:text-white/50">
@@ -556,7 +556,7 @@ export function DashboardView() {
                 </Button>
               </Card>
 
-              <Card className="border-2 border-ink/10 p-6 dark:border-white/10 dark:bg-[#1a1224]">
+              <Card className="border-2 border-ink/10 p-5 dark:border-white/10 dark:bg-[#1a1224]">
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-secondary">
                   Frontier AI Engine
                 </span>
@@ -572,10 +572,10 @@ export function DashboardView() {
             </div>
 
             {/* QUICK LAUNCH BANNER */}
-            <Card className="border-2 border-ink bg-secondary p-6 text-white shadow-[8px_8px_0_#9eff1f]">
+            <Card className="border-2 border-ink bg-secondary p-5 text-white shadow-[6px_6px_0_#9eff1f]">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-display text-2xl">Studio Translation Playground</h3>
+                  <h3 className="font-display text-xl">Studio Translation Playground</h3>
                   <p className="mt-1 text-sm text-white/80">
                     Test live prompts with N-ATLaS and listen with a language-specific research voice.
                   </p>
