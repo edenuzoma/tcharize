@@ -199,17 +199,23 @@ export class NatlasAdapter {
         return mode === "fast" ? restored : this.retryUnchangedPageText(texts, restored, targetLanguage);
       }
 
-      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/translations/natlas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-        body: JSON.stringify({ texts: protectedTexts.map((item) => item.value), source_language: "en", target_language: targetLanguage }),
-        signal: AbortSignal.timeout(180_000),
-      });
-      if (!response.ok) throw new Error(`N-ATLaS returned ${response.status}`);
-      const result = await response.json() as { translations?: unknown };
-      const translated = result.translations;
-      if (!Array.isArray(translated) || translated.length !== texts.length || !translated.every((item) => typeof item === "string")) {
-        throw new Error("N-ATLaS returned an incomplete translation list.");
+      const translated: string[] = [];
+      const providerBatchSize = 50;
+      for (let start = 0; start < protectedTexts.length; start += providerBatchSize) {
+        const batch = protectedTexts.slice(start, start + providerBatchSize);
+        const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/translations/natlas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+          body: JSON.stringify({ texts: batch.map((item) => item.value), source_language: "en", target_language: targetLanguage }),
+          signal: AbortSignal.timeout(180_000),
+        });
+        if (!response.ok) throw new Error(`N-ATLaS returned ${response.status}`);
+        const result = await response.json() as { translations?: unknown };
+        const batchTranslations = result.translations;
+        if (!Array.isArray(batchTranslations) || batchTranslations.length !== batch.length || !batchTranslations.every((item) => typeof item === "string")) {
+          throw new Error("N-ATLaS returned an incomplete translation list.");
+        }
+        translated.push(...batchTranslations);
       }
       const restored = translated.map((item, index) => restoreTranslation(texts[index] ?? "", item, protectedTexts[index]?.terms ?? []));
       return mode === "fast" ? restored : this.retryUnchangedPageText(texts, restored, targetLanguage);

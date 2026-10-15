@@ -145,6 +145,30 @@ describe("NatlasAdapter", () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("splits large website requests into provider-sized batches", async () => {
+    const mockConfig = {
+      get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
+    } as unknown as ConfigService;
+    adapter = new NatlasAdapter(mockConfig);
+    const texts = Array.from({ length: 100 }, (_, index) => `Phrase ${index + 1}`);
+    global.fetch = jest.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { texts: string[] };
+      return new Response(JSON.stringify({ translations: body.texts.map((text) => `Translated ${text}`) }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const translations = await adapter.translatePage(texts, "ig", "fast");
+
+    expect(translations).toHaveLength(100);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    for (const call of (global.fetch as jest.Mock).mock.calls) {
+      const request = JSON.parse(String((call[1] as RequestInit).body)) as { texts: string[] };
+      expect(request.texts.length).toBeLessThanOrEqual(50);
+    }
+  });
+
   it("caps page-quality retries so a slow model cannot hold the whole page open", async () => {
     const mockConfig = {
       get: jest.fn((key: string) => key === "NATLAS_BASE_URL" ? "https://inference.example" : undefined),
