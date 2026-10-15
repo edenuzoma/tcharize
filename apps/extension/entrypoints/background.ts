@@ -17,7 +17,11 @@ export default defineBackground(() => {
       return getApiKey().then((apiKey) => fetch(`${apiUrl}/localization/page`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ texts: message.payload.texts, targetLanguage: message.payload.targetLanguage }),
+        body: JSON.stringify({
+          texts: message.payload.texts,
+          targetLanguage: message.payload.targetLanguage,
+          mode: "fast",
+        }),
       })).then(async (response) => {
         const body = (await response.json()) as { translations?: string[]; message?: string };
         if (!response.ok) throw new Error(body.message ?? "Batch translation failed.");

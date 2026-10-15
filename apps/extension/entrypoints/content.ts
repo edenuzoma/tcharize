@@ -85,7 +85,7 @@ async function translatePage(targetLanguage: LanguageCode): Promise<number> {
   if (nodes.length === 0) return 0;
 
   let totalChanged = 0;
-  const CHUNK_SIZE = 25;
+  const CHUNK_SIZE = 100;
 
   for (let i = 0; i < nodes.length; i += CHUNK_SIZE) {
     const chunkNodes = nodes.slice(i, i + CHUNK_SIZE);

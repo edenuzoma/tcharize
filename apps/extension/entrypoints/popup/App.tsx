@@ -36,7 +36,10 @@ export function App() {
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) throw new Error("Open a web page first.");
-      const result = (await browser.tabs.sendMessage(tab.id, message)) as { changed: number };
+      if (!tab.url || !/^(https?|file):/i.test(tab.url)) {
+        throw new Error("Open a normal website, then try again.");
+      }
+      const result = await sendPageMessage(tab.id, message);
       setStatus(
         result.changed
           ? `🎉 ${result.changed} phrases translated!`
@@ -46,6 +49,21 @@ export function App() {
       setStatus(error instanceof Error ? error.message : "This page cannot be changed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendPageMessage(tabId: number, message: unknown) {
+    try {
+      return (await browser.tabs.sendMessage(tabId, message)) as { changed: number };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      if (!/receiving end does not exist|could not establish connection/i.test(detail)) throw error;
+
+      await browser.scripting.executeScript({
+        target: { tabId },
+        files: ["/content-scripts/content.js"],
+      });
+      return (await browser.tabs.sendMessage(tabId, message)) as { changed: number };
     }
   }
 

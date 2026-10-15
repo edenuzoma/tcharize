@@ -397,7 +397,7 @@ export function DashboardView() {
         const dateObj = new Date(now);
         dateObj.setDate(now.getDate() - (w * 7 + (6 - d)));
         const dateKey = dateObj.toISOString().slice(0, 10);
-        const count = countsByDate.get(dateKey) || (w === 0 && d === 6 ? jobs.length || 1 : 0);
+        const count = countsByDate.get(dateKey) ?? 0;
         let level = 0;
         if (count > 0 && count <= 2) level = 1;
         else if (count > 2 && count <= 5) level = 2;
@@ -421,9 +421,9 @@ export function DashboardView() {
     });
   }, [jobs, searchQuery, statusFilter, langFilter]);
 
-  const wordsUsed = subscription?.wordsUsed ?? (jobs.length * 15 || 3420);
-  const wordLimit = subscription?.wordLimit ?? 250000;
-  const usagePercent = Math.min(100, Math.round((wordsUsed / wordLimit) * 100));
+  const wordsUsed = subscription?.wordsUsed ?? 0;
+  const wordLimit = subscription?.wordLimit ?? 0;
+  const usagePercent = wordLimit > 0 ? Math.min(100, Math.round((wordsUsed / wordLimit) * 100)) : 0;
 
   return (
     <TcharizeDashboardShell
@@ -457,7 +457,8 @@ export function DashboardView() {
         {/* ========================================================= */}
         {/* TAB 1: OVERVIEW (Activity Heatmap + Credit Balance + Metrics) */}
         {/* ========================================================= */}
-        {activeTab === "overview" && (
+        {activeTab === "overview" && loading && <DashboardOverviewSkeleton />}
+        {activeTab === "overview" && !loading && (
           <div className="mt-5 space-y-5">
             {/* 52-WEEK TRANSLATION ACTIVITY HEATMAP (Lingo.dev Replication) */}
             <Card className="border-2 border-ink/10 p-5 shadow-sm dark:border-white/10 dark:bg-[#1a1224]">
@@ -1291,5 +1292,41 @@ export function DashboardView() {
         </div>
       )}
     </TcharizeDashboardShell>
+  );
+}
+
+function DashboardOverviewSkeleton() {
+  return (
+    <div
+      className="mt-5 space-y-5 animate-pulse motion-reduce:animate-none"
+      role="status"
+      aria-label="Loading workspace data"
+    >
+      <span className="sr-only">Loading your workspace data.</span>
+      <Card className="border-2 border-ink/10 p-5 shadow-sm dark:border-white/10 dark:bg-[#1a1224]">
+        <div className="flex items-center justify-between gap-4 border-b border-ink/10 pb-4 dark:border-white/10">
+          <div className="space-y-2">
+            <div className="h-3 w-36 rounded-full bg-ink/10 dark:bg-white/10" />
+            <div className="h-7 w-52 rounded-lg bg-ink/10 dark:bg-white/10" />
+          </div>
+          <div className="hidden h-4 w-32 rounded-full bg-ink/10 sm:block dark:bg-white/10" />
+        </div>
+        <div className="mt-5 grid grid-cols-12 gap-2 overflow-hidden" aria-hidden="true">
+          {Array.from({ length: 84 }, (_, index) => (
+            <span key={index} className="h-3 rounded-[2px] bg-ink/5 dark:bg-white/5" />
+          ))}
+        </div>
+      </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        {Array.from({ length: 3 }, (_, index) => (
+          <Card key={index} className="min-h-44 space-y-4 border-2 border-ink/10 p-5 dark:border-white/10 dark:bg-[#1a1224]">
+            <div className="h-3 w-28 rounded-full bg-ink/10 dark:bg-white/10" />
+            <div className="h-9 w-44 rounded-lg bg-ink/10 dark:bg-white/10" />
+            <div className="h-3 w-full rounded-full bg-ink/10 dark:bg-white/10" />
+            <div className="h-3 w-2/3 rounded-full bg-ink/10 dark:bg-white/10" />
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }

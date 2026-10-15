@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: {
     name: "Tcharize",
     description: "Read the web in Nigerian languages.",
-    permissions: ["activeTab", "storage"],
+    permissions: ["activeTab", "storage", "scripting"],
     host_permissions: [
       "http://localhost:4000/*",
       "https://tcharizeapi-production.up.railway.app/*",
