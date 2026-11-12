@@ -14,16 +14,18 @@ describe("auth email templates", () => {
     expect(email.html).toContain("choose a new password");
   });
 
-  it("escapes names and includes the creator and social links", () => {
-    const email = renderWelcomeEmail("<Eden>", "https://tcharize.up.railway.app/");
-    expect(email.html).toContain("&lt;Eden&gt;");
-    expect(email.html).not.toContain("Welcome, <Eden>");
-    expect(email.html).toContain("Eden Uzoma");
+  it("escapes names and includes the founder and project lead details", () => {
+    const email = renderWelcomeEmail("<Victoria>", "https://tcharize.up.railway.app/");
+    expect(email.html).toContain("&lt;Victoria&gt;");
+    expect(email.html).not.toContain("Welcome, <Victoria>");
+    expect(email.html).toContain("Victoria Luke");
     expect(email.html).toContain("Teacher Rise");
-    expect(email.html).toContain("linkedin.com/in/edenuzoma");
-    expect(email.html).toContain("twitter.com/edenuzoma");
-    expect(email.html).toContain("Follow me here. Let’s keep in touch:");
-    expect(email.html).toContain("Software Engineer &amp; Creator of Tcharize");
+    expect(email.html).toContain("Founder &amp; Project Lead, Tcharize");
+    expect(email.html).toContain("victorialuke54@gmail.com");
+    expect(email.text).toContain("Victoria Luke");
+    expect(email.text).toContain("Founder & Project Lead, Tcharize");
+    expect(email.senderName).toBe("Victoria Luke at Tcharize");
+    expect(email.html).not.toContain("Eden Uzoma");
     expect(email.html).toContain("https://tcharize.up.railway.app/login");
     expect(email.html).not.toContain("https://tcharize.up.railway.app/dashboard");
   });
